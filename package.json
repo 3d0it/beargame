@@ -1,0 +1,21 @@
+{
+  "name": "beargame",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Simulatore web + android del Gioco dell'Orso",
+  "scripts": {
+    "build": "echo 'Build static web: no-op'",
+    "serve": "npx http-server ./web -p 4173",
+    "cap:sync": "npx cap sync android",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^2.1.9",
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/cli": "^6.2.0",
+    "@capacitor/core": "^6.2.0",
+    "vitest": "^2.1.9"
+  }
+}

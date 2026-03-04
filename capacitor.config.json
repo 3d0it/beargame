@@ -1,0 +1,8 @@
+{
+  "appId": "com.beargame.app",
+  "appName": "Gioco dell Orso",
+  "webDir": "web",
+  "server": {
+    "androidScheme": "https"
+  }
+}

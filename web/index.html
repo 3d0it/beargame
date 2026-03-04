@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+    />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <title>Gioco dell'Orso</title>
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <section id="startScreen" class="screen">
+        <header class="hero">
+          <p class="eyebrow">Tavoliere Tradizionale, Look Moderno</p>
+          <h1>Gioco dell'Orso</h1>
+          <p class="subtitle">Scegli la modalità e inizia subito la sfida.</p>
+        </header>
+
+        <section class="start-card">
+          <h2>Modalità di gioco</h2>
+          <div class="mode-grid">
+            <button id="modeHvHBtn" class="mode-btn is-active" type="button" data-mode="hvh">
+              <span class="mode-title">2 Giocatori</span>
+              <span class="mode-copy">Entrambi umani, passaggio turno locale.</span>
+            </button>
+            <button id="modeHvCBtn" class="mode-btn" type="button" data-mode="hvc">
+              <span class="mode-title">Contro PC</span>
+              <span class="mode-copy">Sfida l'algoritmo in due manche alternate.</span>
+            </button>
+          </div>
+
+          <div id="computerSidePanel" class="side-panel is-hidden">
+            <p class="side-title">Nel primo round il computer controlla:</p>
+            <div class="side-toggle">
+              <button id="computerBearBtn" class="side-btn is-active" type="button" data-side="bear">Orso</button>
+              <button id="computerHuntersBtn" class="side-btn" type="button" data-side="hunters">Cacciatori</button>
+            </div>
+          </div>
+
+          <button id="startMatchBtn" class="cta-btn" type="button">Inizia partita</button>
+        </section>
+      </section>
+
+      <section id="gameScreen" class="screen is-hidden">
+        <header class="game-header">
+          <div>
+            <p class="eyebrow">Partita in corso</p>
+            <h2 id="gameModeLabel"></h2>
+          </div>
+          <div class="actions">
+            <button id="backToMenuBtn" type="button">Cambia modalità</button>
+            <button id="newMatchBtn" type="button">Nuova partita</button>
+          </div>
+        </header>
+
+        <section class="left-stack">
+          <section class="status-panel">
+            <p id="roundLabel" class="status-item"></p>
+            <p id="turnLabel" class="status-item"></p>
+            <p id="movesLabel" class="status-item"></p>
+            <p id="messageLabel" class="status-message"></p>
+          </section>
+
+          <section class="results-panel">
+            <p id="resultBanner" class="result-banner">Partita in corso</p>
+            <p id="roundOneResult" class="result-line">Manche 1: in attesa</p>
+            <p id="roundTwoResult" class="result-line">Manche 2: in attesa</p>
+            <p id="matchResultLabel" class="result-final">Risultato finale: in attesa</p>
+          </section>
+
+          <section class="legend">
+            <p><span class="dot bear"></span> Orso</p>
+            <p><span class="dot hunter"></span> Cacciatore</p>
+            <p><span class="dot empty"></span> Intersezione libera</p>
+          </section>
+        </section>
+
+        <section class="board-panel">
+          <svg id="board" viewBox="0 0 100 100" aria-label="Tavoliere del gioco dell'orso"></svg>
+        </section>
+      </section>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
