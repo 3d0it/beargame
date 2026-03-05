@@ -41,6 +41,9 @@ class FakeElement {
     this.classList = new FakeClassList(initialClasses);
     this.listeners = new Map();
     this.textContent = '';
+    this.style = {};
+    this.clientWidth = 420;
+    this._closest = null;
   }
 
   addEventListener(type, handler) {
@@ -50,6 +53,11 @@ class FakeElement {
   dispatch(type) {
     const handler = this.listeners.get(type);
     if (handler) handler();
+  }
+
+  closest(selector) {
+    if (selector === '.board-panel') return this._closest;
+    return null;
   }
 }
 
@@ -89,6 +97,24 @@ function setupDom() {
       return elements[id] ?? null;
     }
   };
+
+  const boardPanel = new FakeElement('boardPanel');
+  boardPanel.clientWidth = 520;
+  boardPanel.getBoundingClientRect = () => ({ top: 100, width: 520 });
+  elements.board._closest = boardPanel;
+
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: {
+      innerHeight: 920,
+      innerWidth: 1200,
+      addEventListener: vi.fn(),
+      getComputedStyle: vi.fn(() => ({
+        paddingLeft: '10',
+        paddingRight: '10'
+      }))
+    }
+  });
 
   return elements;
 }
@@ -162,6 +188,8 @@ describe('main.js', () => {
     expect(renderMock).toHaveBeenCalled();
     expect(elements.startScreen.classList.contains('is-hidden')).toBe(true);
     expect(elements.gameScreen.classList.contains('is-hidden')).toBe(false);
+    expect(elements.board.style.width).toBeTruthy();
+    expect(elements.board.style.height).toBeTruthy();
   });
 
   it('usa configurazione aggiornata per nuova partita (hvc + hunters)', async () => {
@@ -286,5 +314,142 @@ describe('main.js', () => {
 
     expect(elements.matchResultLabel.textContent).toContain('vince Umano');
     expect(elements.messageLabel.textContent).toContain('vince Umano');
+  });
+
+  it('gestisce risultati tie e ultimo esito nel banner', async () => {
+    const state = {
+      current: {
+        mode: 'hvh',
+        round: 2,
+        phase: 'tie-after-two-rounds',
+        turn: null,
+        bearMoves: 40,
+        message: 'fine',
+        matchSummary: { isTie: true, winnerPlayer: null },
+        lastRoundResult: {
+          round: 2,
+          reason: 'draw',
+          immobilizationMoves: null,
+          bearPlayer: 'player-2',
+          huntersPlayer: 'player-1'
+        },
+        roundResults: [
+          {
+            round: 1,
+            reason: 'draw',
+            immobilizationMoves: null,
+            bearPlayer: 'player-1',
+            huntersPlayer: 'player-2'
+          },
+          {
+            round: 2,
+            reason: 'draw',
+            immobilizationMoves: null,
+            bearPlayer: 'player-2',
+            huntersPlayer: 'player-1'
+          }
+        ]
+      }
+    };
+
+    const { elements, gameMock } = await importMainWithMocks({
+      registerMock: vi.fn(() => Promise.resolve()),
+      state
+    });
+
+    const onChange = gameMock.setOnChange.mock.calls[0][0];
+    onChange();
+
+    expect(elements.resultBanner.textContent).toContain('parità');
+    expect(elements.resultBanner.classList.contains('tie')).toBe(true);
+    expect(elements.turnLabel.textContent).toBe('Turno: -');
+    expect(elements.messageLabel.textContent).toContain('Risultato finale: parità');
+  });
+
+  it('torna al menu con pulsante Cambia modalità', async () => {
+    const state = {
+      current: {
+        round: 1,
+        turn: 'hunters',
+        bearMoves: 0,
+        message: 'setup'
+      }
+    };
+
+    const { elements } = await importMainWithMocks({
+      registerMock: vi.fn(() => Promise.resolve()),
+      state
+    });
+
+    elements.startMatchBtn.dispatch('click');
+    expect(elements.gameScreen.classList.contains('is-hidden')).toBe(false);
+    elements.backToMenuBtn.dispatch('click');
+    expect(elements.gameScreen.classList.contains('is-hidden')).toBe(true);
+    expect(elements.startScreen.classList.contains('is-hidden')).toBe(false);
+  });
+
+  it('in assenza di service worker non tenta la registrazione', async () => {
+    vi.resetModules();
+    const elements = setupDom();
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: {}
+    });
+
+    const gameMock = {
+      newMatch: vi.fn(),
+      getState: vi.fn(() => ({
+        round: 1,
+        turn: 'hunters',
+        bearMoves: 0,
+        message: 'setup'
+      })),
+      setOnChange: vi.fn(),
+      clickNode: vi.fn()
+    };
+    const renderMock = vi.fn();
+
+    vi.doMock('./game.js', () => ({
+      createGame: () => gameMock
+    }));
+    vi.doMock('./board-renderer.js', () => ({
+      createBoardRenderer: vi.fn(() => ({ render: renderMock }))
+    }));
+
+    await import('./main.js');
+
+    expect(elements.startScreen.classList.contains('is-hidden')).toBe(false);
+    expect(gameMock.setOnChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('non fallisce quando navigator non esiste', async () => {
+    vi.resetModules();
+    setupDom();
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: undefined
+    });
+
+    const gameMock = {
+      newMatch: vi.fn(),
+      getState: vi.fn(() => ({
+        round: 1,
+        turn: 'hunters',
+        bearMoves: 0,
+        message: 'setup'
+      })),
+      setOnChange: vi.fn(),
+      clickNode: vi.fn()
+    };
+
+    vi.doMock('./game.js', () => ({
+      createGame: () => gameMock
+    }));
+    vi.doMock('./board-renderer.js', () => ({
+      createBoardRenderer: vi.fn(() => ({ render: vi.fn() }))
+    }));
+
+    await import('./main.js');
+    expect(gameMock.setOnChange).toHaveBeenCalledTimes(1);
   });
 });

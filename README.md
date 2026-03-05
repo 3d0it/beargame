@@ -15,6 +15,8 @@ Implementazione a codebase unica del gioco dell'orso con:
 - Match su 2 manche con scambio ruoli (gestione parità con spareggio manuale: nuova partita).
 
 ## Avvio locale web
+Prerequisiti: Node.js `>= 22`.
+
 ```bash
 npm ci
 npm run serve

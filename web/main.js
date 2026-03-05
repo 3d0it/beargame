@@ -35,7 +35,7 @@ let selectedMode = 'hvh';
 let selectedComputerSide = 'bear';
 
 function registerServiceWorker() {
-  if (!('serviceWorker' in navigator)) return;
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
 
   navigator.serviceWorker.register('./sw.js').catch((error) => {
     console.warn('[sw] registration failed:', error);
