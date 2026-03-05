@@ -27,6 +27,21 @@ Poi apri `http://localhost:4173`.
 Workflow: `.github/workflows/ci.yml`
 - Trigger: pull request e push su `main`
 - Esegue test con coverage (`npm run test:coverage`) e soglie minime.
+- Esegue audit dipendenze runtime (`npm audit --omit=dev --audit-level=high`).
+
+## Strategia test
+- Unit test logica partita: `web/game.test.js`
+- Unit test rendering SVG: `web/board-renderer.test.js`
+- Unit/integration bootstrap UI: `web/main.test.js`
+- UI integration su DOM reale (jsdom): `web/ui.integration.test.js`
+- Test service worker: `web/sw.test.js`
+
+Comandi utili:
+```bash
+npm test
+npm run test:ui
+npm run test:coverage
+```
 
 ## Pubblicazione web automatica
 Workflow: `.github/workflows/deploy-web.yml`

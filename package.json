@@ -12,6 +12,7 @@
     "serve": "npx http-server ./web -p 4173",
     "cap:sync": "npx cap sync android",
     "test": "vitest run",
+    "test:ui": "vitest run web/ui.integration.test.js",
     "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
@@ -19,6 +20,7 @@
     "@capacitor/cli": "^8.1.0",
     "@capacitor/core": "^8.1.0",
     "@vitest/coverage-v8": "^4.0.18",
+    "jsdom": "^26.1.0",
     "vitest": "^4.0.18"
   }
 }
