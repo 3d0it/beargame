@@ -285,4 +285,133 @@ describe('createGame', () => {
     expect(summary.message).not.toContain('999');
     expect(summary.message).toContain('Partita conclusa');
   });
+
+  it('setConfig aggiorna configurazione e fallback difficolta con callback onChange', () => {
+    const game = createGame();
+    const onChange = vi.fn();
+    game.setOnChange(onChange);
+
+    game.setConfig('hvc', 'hunters', 'hard');
+    expect(game.getState().mode).toBe('hvc');
+    expect(game.getState().computerSide).toBe('hunters');
+    expect(game.getState().difficulty).toBe('hard');
+    expect(onChange).toHaveBeenCalledTimes(1);
+
+    game.setConfig('hvc', 'bear', 'unknown');
+    expect(game.getState().difficulty).toBe('easy');
+    expect(onChange).toHaveBeenCalledTimes(2);
+  });
+
+  it('in hvc medium con computer cacciatori usa la logica minimax su setup e mossa', () => {
+    vi.useFakeTimers();
+    const game = createGame();
+    game.newMatch('hvc', 'hunters', 'medium');
+
+    // setup cacciatori automatico (medium)
+    vi.runOnlyPendingTimers();
+    expect(game.getState().phase).toBe('setup-bear');
+    expect(game.getState().hunters.length).toBe(3);
+
+    // setup orso umano, poi mossa orso umana per innescare risposta cacciatori computer
+    game.clickNode(18);
+    expect(game.getState().turn).toBe('bear');
+    game.clickNode(16);
+    expect(game.getState().turn).toBe('hunters');
+
+    vi.runOnlyPendingTimers();
+    const state = game.getState();
+    expect(state.phase).toBe('playing');
+    expect(state.turn).toBe('bear');
+
+    vi.useRealTimers();
+  });
+
+  it('in hvc hard con computer orso usa setup e mossa avanzata', () => {
+    vi.useFakeTimers();
+    const game = createGame();
+    game.newMatch('hvc', 'bear', 'hard');
+    game.clickNode(1);
+
+    vi.runOnlyPendingTimers();
+    const state = game.getState();
+    expect(state.phase).toBe('playing');
+    expect(state.bear).not.toBeNull();
+    expect(state.turn).toBe('hunters');
+    expect(state.bearMoves).toBe(1);
+
+    vi.useRealTimers();
+  });
+});
+
+describe('summarizeMatch', () => {
+  it('restituisce partita in corso con meno di due round', () => {
+    const summary = summarizeMatch([{ round: 1, reason: 'draw' }]);
+    expect(summary.winnerPlayer).toBeNull();
+    expect(summary.message).toContain('Partita in corso');
+  });
+
+  it('determina vittoria player-2 quando solo lui immobilizza l orso', () => {
+    const summary = summarizeMatch([
+      {
+        reason: 'hunters-win',
+        immobilizationMoves: 8,
+        bearPlayer: 'player-1',
+        huntersPlayer: 'player-2'
+      },
+      {
+        round: 2,
+        reason: 'draw',
+        immobilizationMoves: null,
+        bearPlayer: 'player-2',
+        huntersPlayer: 'player-1'
+      }
+    ]);
+
+    expect(summary.isTie).toBe(false);
+    expect(summary.winnerPlayer).toBe('player-2');
+  });
+
+  it('risolve spareggio con entrambi i giocatori vincenti in base alle mosse', () => {
+    const summary = summarizeMatch([
+      {
+        round: 1,
+        reason: 'hunters-win',
+        immobilizationMoves: 14,
+        bearPlayer: 'player-1',
+        huntersPlayer: 'player-2'
+      },
+      {
+        round: 2,
+        reason: 'hunters-win',
+        immobilizationMoves: 10,
+        bearPlayer: 'player-2',
+        huntersPlayer: 'player-1'
+      }
+    ]);
+
+    expect(summary.isTie).toBe(false);
+    expect(summary.winnerPlayer).toBe('player-1');
+  });
+
+  it('restituisce parita se entrambi immobilizzano in uguale numero di mosse', () => {
+    const summary = summarizeMatch([
+      {
+        round: 1,
+        reason: 'hunters-win',
+        immobilizationMoves: 12,
+        bearPlayer: 'player-1',
+        huntersPlayer: 'player-2'
+      },
+      {
+        round: 2,
+        reason: 'hunters-win',
+        immobilizationMoves: 12,
+        bearPlayer: 'player-2',
+        huntersPlayer: 'player-1'
+      }
+    ]);
+
+    expect(summary.isTie).toBe(true);
+    expect(summary.winnerPlayer).toBeNull();
+  });
 });
