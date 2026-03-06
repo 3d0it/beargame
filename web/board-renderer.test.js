@@ -65,6 +65,14 @@ function visit(root, predicate) {
   return null;
 }
 
+function collect(root, predicate, acc = []) {
+  if (predicate(root)) acc.push(root);
+  for (const child of root.children) {
+    collect(child, predicate, acc);
+  }
+  return acc;
+}
+
 describe('createBoardRenderer', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -145,6 +153,28 @@ describe('createBoardRenderer', () => {
     const hasBearPiece = visit(board, (el) => el.getAttribute('class') === 'piece piece-bear');
     expect(hasBearPiece).not.toBeNull();
 
+    restore();
+  });
+
+  it('in setup cacciatori evidenzia lunette con archi e nodi guida', () => {
+    const restore = makeFakeDom();
+    const board = new FakeSvgElement('svg');
+    const game = {
+      getState: () => ({ bear: null, hunters: [], selectedHunter: null, phase: 'setup-hunters' }),
+      clickNode: vi.fn()
+    };
+
+    const renderer = createBoardRenderer({ board, game });
+    renderer.render();
+
+    const highlightedArcs = collect(
+      board,
+      (el) => el.tagName === 'path' && (el.getAttribute('class') || '').includes('edge-lunette-guide')
+    );
+    const guideNodes = collect(board, (el) => el.getAttribute('class') === 'lunette-guide-node');
+
+    expect(highlightedArcs).toHaveLength(4);
+    expect(guideNodes).toHaveLength(12);
     restore();
   });
 });

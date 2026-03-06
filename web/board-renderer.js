@@ -2,6 +2,12 @@ import { BOARD_NODES } from './game.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const REQUIRED_LUNETTE_NODE_IDS = [1, 3, 4, 6, 7, 9, 10, 12];
+const LUNETTE_GROUPS = [
+  [1, 2, 3],
+  [4, 5, 6],
+  [7, 8, 9],
+  [10, 11, 12]
+];
 
 export function createBoardRenderer({ board, game, onAfterNodeClick }) {
   validateBoardRendererInput(board, game);
@@ -13,7 +19,11 @@ export function createBoardRenderer({ board, game, onAfterNodeClick }) {
     const state = game.getState();
     board.innerHTML = '';
 
-    drawBoardLines(board, lunetteResolution);
+    const isHuntersSetup = state.phase === 'setup-hunters';
+    drawBoardLines(board, lunetteResolution, isHuntersSetup);
+    if (isHuntersSetup) {
+      drawLunetteGuides(board, nodeMap);
+    }
 
     for (const node of BOARD_NODES) {
       const hit = createCircle(node.x, node.y, 4.8, 'node-hit');
@@ -79,7 +89,7 @@ function resolveLunetteNodes(nodeMap) {
   };
 }
 
-function drawBoardLines(board, lunetteResolution) {
+function drawBoardLines(board, lunetteResolution, isHuntersSetup = false) {
   board.appendChild(ellipse(50, 50, 43, 43));
   board.appendChild(ellipse(50, 50, 15, 15));
   board.appendChild(line(50, 7, 50, 93));
@@ -91,10 +101,20 @@ function drawBoardLines(board, lunetteResolution) {
   }
 
   const lunetteNodes = lunetteResolution.nodes;
-  board.appendChild(arcPath(lunetteNodes.n1.x, lunetteNodes.n1.y, lunetteNodes.n3.x, lunetteNodes.n3.y, 0, 30));
-  board.appendChild(arcPath(lunetteNodes.n10.x, lunetteNodes.n10.y, lunetteNodes.n12.x, lunetteNodes.n12.y, 1, 30));
-  board.appendChild(arcPath(lunetteNodes.n4.x, lunetteNodes.n4.y, lunetteNodes.n6.x, lunetteNodes.n6.y, 1, 30));
-  board.appendChild(arcPath(lunetteNodes.n7.x, lunetteNodes.n7.y, lunetteNodes.n9.x, lunetteNodes.n9.y, 0, 30));
+  board.appendChild(arcPath(lunetteNodes.n1.x, lunetteNodes.n1.y, lunetteNodes.n3.x, lunetteNodes.n3.y, 0, 30, isHuntersSetup));
+  board.appendChild(arcPath(lunetteNodes.n10.x, lunetteNodes.n10.y, lunetteNodes.n12.x, lunetteNodes.n12.y, 1, 30, isHuntersSetup));
+  board.appendChild(arcPath(lunetteNodes.n4.x, lunetteNodes.n4.y, lunetteNodes.n6.x, lunetteNodes.n6.y, 1, 30, isHuntersSetup));
+  board.appendChild(arcPath(lunetteNodes.n7.x, lunetteNodes.n7.y, lunetteNodes.n9.x, lunetteNodes.n9.y, 0, 30, isHuntersSetup));
+}
+
+function drawLunetteGuides(board, nodeMap) {
+  for (const lunette of LUNETTE_GROUPS) {
+    for (const nodeId of lunette) {
+      const node = nodeMap.get(nodeId);
+      if (!node) continue;
+      board.appendChild(createCircle(node.x, node.y, 3.7, 'lunette-guide-node'));
+    }
+  }
 }
 
 function drawLunetteWarning(board, missingIds) {
@@ -139,10 +159,10 @@ function ellipse(cx, cy, rx, ry) {
   return e;
 }
 
-function arcPath(x1, y1, x2, y2, sweepFlag, radius = 30) {
+function arcPath(x1, y1, x2, y2, sweepFlag, radius = 30, highlight = false) {
   const path = document.createElementNS(SVG_NS, 'path');
   path.setAttribute('d', `M ${x1} ${y1} A ${radius} ${radius} 0 0 ${sweepFlag} ${x2} ${y2}`);
-  path.setAttribute('class', 'edge');
+  path.setAttribute('class', highlight ? 'edge edge-lunette-guide' : 'edge');
   return path;
 }
 
