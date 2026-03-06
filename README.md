@@ -2,7 +2,7 @@
 
 Implementazione a codebase unica del gioco dell'orso con:
 - Modalità `umano vs umano`
-- Modalità `umano vs computer`
+- Modalità `umano vs computer` con livelli `facile`, `medio`, `difficile`
 - Distribuzione web (GitHub Pages)
 - Packaging Android + pubblicazione Play Store via GitHub Actions
 
@@ -50,8 +50,8 @@ Workflow: `.github/workflows/deploy-web.yml`
 
 ## Pubblicazione Play Store automatica
 Workflow: `.github/workflows/publish-playstore.yml`
-- Trigger: manuale (`workflow_dispatch`) o push tag `v*`.
-- Build AAB, firma e upload su track `internal`.
+- Trigger: manuale (`workflow_dispatch`).
+- Build AAB, firma e upload su track selezionabile (`internal` default, oppure `beta`).
 
 ### Secrets richiesti
 - `SIGNING_KEY_BASE64`

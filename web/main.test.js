@@ -70,6 +70,10 @@ const REQUIRED_IDS = [
   'computerSidePanel',
   'computerBearBtn',
   'computerHuntersBtn',
+  'difficultyPanel',
+  'difficultyEasyBtn',
+  'difficultyMediumBtn',
+  'difficultyHardBtn',
   'startMatchBtn',
   'backToMenuBtn',
   'newMatchBtn',
@@ -91,6 +95,7 @@ function setupDom() {
     elements[id] = new FakeElement(id, classes);
   }
   elements.computerSidePanel.classList.add('is-hidden');
+  elements.difficultyPanel.classList.add('is-hidden');
 
   globalThis.document = {
     getElementById(id) {
@@ -184,7 +189,7 @@ describe('main.js', () => {
 
     elements.startMatchBtn.dispatch('click');
 
-    expect(gameMock.newMatch).toHaveBeenCalledWith('hvh', 'bear');
+    expect(gameMock.newMatch).toHaveBeenCalledWith('hvh', 'bear', 'easy');
     expect(renderMock).toHaveBeenCalled();
     expect(elements.startScreen.classList.contains('is-hidden')).toBe(true);
     expect(elements.gameScreen.classList.contains('is-hidden')).toBe(false);
@@ -212,7 +217,30 @@ describe('main.js', () => {
     elements.computerHuntersBtn.dispatch('click');
     elements.newMatchBtn.dispatch('click');
 
-    expect(gameMock.newMatch).toHaveBeenCalledWith('hvc', 'hunters');
+    expect(gameMock.newMatch).toHaveBeenCalledWith('hvc', 'hunters', 'easy');
+  });
+
+  it('applica la difficolta selezionata in modalita contro pc', async () => {
+    const state = {
+      current: {
+        round: 1,
+        turn: 'hunters',
+        bearMoves: 0,
+        message: 'setup'
+      }
+    };
+
+    const { elements, gameMock } = await importMainWithMocks({
+      registerMock: vi.fn(() => Promise.resolve()),
+      state
+    });
+
+    elements.modeHvCBtn.dispatch('click');
+    expect(elements.difficultyPanel.classList.contains('is-hidden')).toBe(false);
+    elements.difficultyHardBtn.dispatch('click');
+    elements.startMatchBtn.dispatch('click');
+
+    expect(gameMock.newMatch).toHaveBeenCalledWith('hvc', 'bear', 'hard');
   });
 
   it('aggiorna status quando il motore invoca onChange', async () => {

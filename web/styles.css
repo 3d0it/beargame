@@ -167,6 +167,10 @@ h2 {
   gap: 0.6rem;
 }
 
+.side-toggle--triple {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .side-btn {
   padding: 0.62rem 0.7rem;
 }

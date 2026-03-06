@@ -51,7 +51,7 @@ describe('controllerFor', () => {
 describe('createGame', () => {
   it('inizializza una nuova partita con setup corretto', () => {
     const game = createGame();
-    game.newMatch('hvh', 'bear');
+    game.newMatch('hvh', 'bear', 'easy');
     const state = game.getState();
 
     expect(state.phase).toBe('setup-hunters');
@@ -61,9 +61,18 @@ describe('createGame', () => {
     expect(state.round).toBe(1);
   });
 
+  it('salva la difficolta selezionata e usa easy come fallback', () => {
+    const game = createGame();
+    game.newMatch('hvc', 'bear', 'hard');
+    expect(game.getState().difficulty).toBe('hard');
+
+    game.newMatch('hvc', 'bear', 'impossible');
+    expect(game.getState().difficulty).toBe('easy');
+  });
+
   it('getState restituisce uno snapshot e non espone mutabilita interna', () => {
     const game = createGame();
-    game.newMatch('hvh', 'bear');
+    game.newMatch('hvh', 'bear', 'easy');
 
     const snapshot = game.getState();
     snapshot.mode = 'hvc';
@@ -78,7 +87,7 @@ describe('createGame', () => {
 
   it('i cacciatori scelgono una lunetta iniziale prima del setup orso', () => {
     const game = createGame();
-    game.newMatch('hvh', 'bear');
+    game.newMatch('hvh', 'bear', 'easy');
     game.clickNode(8);
 
     const state = game.getState();
@@ -88,7 +97,7 @@ describe('createGame', () => {
 
   it('in setup cacciatori ignora nodi fuori lunetta', () => {
     const game = createGame();
-    game.newMatch('hvh', 'bear');
+    game.newMatch('hvh', 'bear', 'easy');
     game.clickNode(18);
 
     const state = game.getState();
@@ -98,7 +107,7 @@ describe('createGame', () => {
 
   it('non permette all orso di partire su una posizione occupata', () => {
     const game = createGame();
-    game.newMatch('hvh', 'bear');
+    game.newMatch('hvh', 'bear', 'easy');
     game.clickNode(1);
 
     game.clickNode(1);
@@ -111,7 +120,7 @@ describe('createGame', () => {
 
   it('applica una mossa valida dell orso e una dei cacciatori', () => {
     const game = createGame();
-    game.newMatch('hvh', 'bear');
+    game.newMatch('hvh', 'bear', 'easy');
     game.clickNode(1);
     game.clickNode(18);
 
@@ -131,7 +140,7 @@ describe('createGame', () => {
 
   it('ignora una mossa orso non adiacente', () => {
     const game = createGame();
-    game.newMatch('hvh', 'bear');
+    game.newMatch('hvh', 'bear', 'easy');
     game.clickNode(1);
     game.clickNode(18);
 
@@ -144,7 +153,7 @@ describe('createGame', () => {
 
   it('mantiene selezione cacciatore se la destinazione non e valida', () => {
     const game = createGame();
-    game.newMatch('hvh', 'bear');
+    game.newMatch('hvh', 'bear', 'easy');
     game.clickNode(1);
     game.clickNode(18);
     game.clickNode(16);
@@ -160,7 +169,7 @@ describe('createGame', () => {
 
   it('chiude il primo round in patta dopo 40 mosse orso e passa al round 2', () => {
     const game = createGame();
-    game.newMatch('hvh', 'bear');
+    game.newMatch('hvh', 'bear', 'easy');
     playDrawRound(game);
 
     const state = game.getState();
@@ -176,7 +185,7 @@ describe('createGame', () => {
 
   it('dopo due round patta entra in tie-after-two-rounds', () => {
     const game = createGame();
-    game.newMatch('hvh', 'bear');
+    game.newMatch('hvh', 'bear', 'easy');
 
     playDrawRound(game);
     playDrawRound(game, { lunetteNode: 5 });
@@ -193,7 +202,7 @@ describe('createGame', () => {
   it('in hvc con computer cacciatori seleziona automaticamente una lunetta', () => {
     vi.useFakeTimers();
     const game = createGame();
-    game.newMatch('hvc', 'hunters');
+    game.newMatch('hvc', 'hunters', 'easy');
 
     vi.runOnlyPendingTimers();
 
@@ -208,7 +217,7 @@ describe('createGame', () => {
   it('in setup cacciatori con computer ignora click umano prima del timer', () => {
     vi.useFakeTimers();
     const game = createGame();
-    game.newMatch('hvc', 'hunters');
+    game.newMatch('hvc', 'hunters', 'easy');
 
     game.clickNode(1);
     expect(game.getState().hunters).toEqual([]);
@@ -223,8 +232,8 @@ describe('createGame', () => {
     vi.useFakeTimers();
     const game = createGame();
 
-    game.newMatch('hvc', 'hunters');
-    game.newMatch('hvh', 'bear');
+    game.newMatch('hvc', 'hunters', 'easy');
+    game.newMatch('hvh', 'bear', 'easy');
 
     vi.runOnlyPendingTimers();
 
@@ -239,7 +248,7 @@ describe('createGame', () => {
   it('in hvc con computer orso esegue setup e prima mossa dopo la scelta lunetta', () => {
     vi.useFakeTimers();
     const game = createGame();
-    game.newMatch('hvc', 'bear');
+    game.newMatch('hvc', 'bear', 'easy');
     game.clickNode(1);
 
     vi.runOnlyPendingTimers();

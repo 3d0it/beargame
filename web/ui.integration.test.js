@@ -11,6 +11,11 @@ function mountAppDom() {
           <button id="computerBearBtn" class="side-btn is-active" type="button"></button>
           <button id="computerHuntersBtn" class="side-btn" type="button"></button>
         </div>
+        <div id="difficultyPanel" class="side-panel is-hidden">
+          <button id="difficultyEasyBtn" class="side-btn is-active" type="button"></button>
+          <button id="difficultyMediumBtn" class="side-btn" type="button"></button>
+          <button id="difficultyHardBtn" class="side-btn" type="button"></button>
+        </div>
         <button id="startMatchBtn" type="button"></button>
       </section>
       <section id="gameScreen" class="screen is-hidden">

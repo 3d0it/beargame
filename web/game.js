@@ -40,6 +40,13 @@ const HUNTER_LUNETTES = [
   [7, 8, 9],
   [10, 11, 12]
 ];
+const GAME_DIFFICULTIES = new Set(['easy', 'medium', 'hard']);
+const DIFFICULTY_CONFIG = {
+  easy: { bearDepth: 1, hunterDepth: 1, setupDepth: 1 },
+  medium: { bearDepth: 4, hunterDepth: 3, setupDepth: 3 },
+  hard: { bearDepth: 6, hunterDepth: 5, setupDepth: 4 }
+};
+
 const lunetteByNode = new Map();
 for (const lunette of HUNTER_LUNETTES) {
   for (const nodeId of lunette) lunetteByNode.set(nodeId, lunette);
@@ -119,6 +126,7 @@ function emptyState() {
   return {
     mode: 'hvh',
     computerSide: 'bear',
+    difficulty: 'easy',
     round: 1,
     roundResults: [],
     lastRoundResult: null,
@@ -148,6 +156,10 @@ export function createGame() {
 
   function isCurrentEpoch(epoch) {
     return epoch === matchEpoch;
+  }
+
+  function resolveDifficulty(nextDifficulty = 'easy') {
+    return GAME_DIFFICULTIES.has(nextDifficulty) ? nextDifficulty : 'easy';
   }
 
   function isOccupied(nodeId, local = state) {
@@ -258,10 +270,6 @@ export function createGame() {
     return true;
   }
 
-  function getCurrentBearSide() {
-    return state.round % 2 === 1 ? 'player-1' : 'player-2';
-  }
-
   function currentControllerFor(side) {
     return controllerFor({
       mode: state.mode,
@@ -271,12 +279,6 @@ export function createGame() {
     });
   }
 
-  function evaluateState(local) {
-    const mobility = getBearLegalMoves(local).length;
-    const trappedPenalty = mobility === 0 ? -100 : 0;
-    return mobility * 8 + trappedPenalty;
-  }
-
   function cloneState(local) {
     return {
       ...local,
@@ -284,53 +286,274 @@ export function createGame() {
     };
   }
 
-  function computerBearMove() {
-    const moves = getBearLegalMoves();
-    if (moves.length === 0) return;
-    let bestMove = moves[0];
-    let bestScore = -Infinity;
+  function getDifficultyConfig() {
+    return DIFFICULTY_CONFIG[state.difficulty] ?? DIFFICULTY_CONFIG.easy;
+  }
 
-    for (const to of moves) {
-      const simulated = cloneState(state);
-      simulated.bear = to;
-      const hunterResponses = getHunterLegalMoves(simulated);
-      let worstReply = Infinity;
-      if (hunterResponses.length === 0) {
-        worstReply = evaluateState(simulated);
-      } else {
-        for (const reply of hunterResponses) {
-          const afterReply = cloneState(simulated);
-          afterReply.hunters[reply.hunterIndex] = reply.to;
-          worstReply = Math.min(worstReply, evaluateState(afterReply));
+  function nodeDistance(a, b) {
+    const nodeA = BOARD_NODES[a];
+    const nodeB = BOARD_NODES[b];
+    if (!nodeA || !nodeB) return 0;
+    const dx = nodeA.x - nodeB.x;
+    const dy = nodeA.y - nodeB.y;
+    return Math.hypot(dx, dy);
+  }
+
+  function reachableCount(local, start, maxDepth) {
+    if (start === null || start === undefined) return 0;
+    const queue = [{ node: start, depth: 0 }];
+    const visited = new Set([start]);
+
+    while (queue.length > 0) {
+      const current = queue.shift();
+      if (!current || current.depth >= maxDepth) continue;
+
+      for (const next of adjacency.get(current.node) ?? []) {
+        if (visited.has(next) || local.hunters.includes(next)) continue;
+        visited.add(next);
+        queue.push({ node: next, depth: current.depth + 1 });
+      }
+    }
+
+    return visited.size;
+  }
+
+  function evaluateState(local, perspective = 'bear') {
+    const mobility = getBearLegalMoves(local).length;
+    const trapped = local.bear !== null && mobility === 0;
+    const escaped = local.bearMoves >= MAX_BEAR_MOVES;
+
+    if (trapped) {
+      const score = -250000 + local.bearMoves * 140;
+      return perspective === 'bear' ? score : -score;
+    }
+    if (escaped) {
+      const score = 250000 - local.bearMoves * 80;
+      return perspective === 'bear' ? score : -score;
+    }
+
+    let distanceSum = 0;
+    let pressure = 0;
+    for (const hunter of local.hunters) {
+      const dist = nodeDistance(local.bear, hunter);
+      distanceSum += dist;
+      pressure += 1 / Math.max(1, dist);
+    }
+
+    const centerDistance = nodeDistance(local.bear, 18);
+    const hunterAdjacency = local.hunters.filter((hunter) => adjacency.get(local.bear)?.includes(hunter)).length;
+    const twoStepMobility = getBearLegalMoves(local)
+      .map((to) => {
+        const simulated = cloneState(local);
+        simulated.bear = to;
+        return getBearLegalMoves(simulated).length;
+      })
+      .reduce((sum, value) => sum + value, 0);
+    const reachable3 = reachableCount(local, local.bear, 3);
+    const safeAdjacents = getBearLegalMoves(local).filter(
+      (to) => !local.hunters.some((hunter) => adjacency.get(to)?.includes(hunter))
+    ).length;
+
+    // Higher score favors bear freedom; hunters maximize the inverse.
+    const bearScore =
+      mobility * 52 +
+      twoStepMobility * 16 +
+      reachable3 * 10 +
+      safeAdjacents * 14 +
+      distanceSum * 0.7 -
+      pressure * 140 -
+      centerDistance * 0.5 -
+      hunterAdjacency * 32;
+    return perspective === 'bear' ? bearScore : -bearScore;
+  }
+
+  function applyVirtualMove(local, side, move) {
+    const next = cloneState(local);
+    if (side === 'bear') {
+      next.bear = move.to;
+      next.bearMoves += 1;
+      next.turn = 'hunters';
+      return next;
+    }
+
+    next.hunters[move.hunterIndex] = move.to;
+    next.turn = 'bear';
+    return next;
+  }
+
+  function legalMovesFor(side, local) {
+    if (side === 'bear') return getBearLegalMoves(local).map((to) => ({ to }));
+    return getHunterLegalMoves(local);
+  }
+
+  function orderedMoves(local, sideToMove, perspective, maximizing) {
+    const moves = legalMovesFor(sideToMove, local);
+    return moves.sort((a, b) => {
+      const scoreA = evaluateState(applyVirtualMove(local, sideToMove, a), perspective);
+      const scoreB = evaluateState(applyVirtualMove(local, sideToMove, b), perspective);
+      return maximizing ? scoreB - scoreA : scoreA - scoreB;
+    });
+  }
+
+  function stateHash(local, depth, sideToMove, perspective) {
+    const hunters = [...local.hunters].sort((a, b) => a - b).join(',');
+    return `${local.bear}|${hunters}|${local.bearMoves}|${depth}|${sideToMove}|${perspective}`;
+  }
+
+  function minimax(local, depth, sideToMove, perspective, alpha, beta, transposition) {
+    const bearMoves = getBearLegalMoves(local);
+    const terminalBearTrapped = local.bear !== null && bearMoves.length === 0;
+    if (depth === 0 || terminalBearTrapped || local.bearMoves >= MAX_BEAR_MOVES) {
+      return evaluateState(local, perspective);
+    }
+
+    const key = stateHash(local, depth, sideToMove, perspective);
+    const cached = transposition.get(key);
+    if (cached !== undefined) return cached;
+
+    const maximizing = sideToMove === perspective;
+    const moves = orderedMoves(local, sideToMove, perspective, maximizing);
+    if (moves.length === 0) {
+      return evaluateState(local, perspective);
+    }
+
+    if (maximizing) {
+      let best = -Infinity;
+      for (const move of moves) {
+        const next = applyVirtualMove(local, sideToMove, move);
+        const score = minimax(
+          next,
+          depth - 1,
+          sideToMove === 'bear' ? 'hunters' : 'bear',
+          perspective,
+          alpha,
+          beta,
+          transposition
+        );
+        if (score > best) best = score;
+        if (score > alpha) alpha = score;
+        if (beta <= alpha) break;
+      }
+      transposition.set(key, best);
+      return best;
+    }
+
+    let best = Infinity;
+    for (const move of moves) {
+      const next = applyVirtualMove(local, sideToMove, move);
+      const score = minimax(
+        next,
+        depth - 1,
+        sideToMove === 'bear' ? 'hunters' : 'bear',
+        perspective,
+        alpha,
+        beta,
+        transposition
+      );
+      if (score < best) best = score;
+      if (score < beta) beta = score;
+      if (beta <= alpha) break;
+    }
+    transposition.set(key, best);
+    return best;
+  }
+
+  function chooseBearMoveByDifficulty() {
+    const moves = getBearLegalMoves();
+    if (moves.length === 0) return null;
+
+    if (state.difficulty === 'easy') {
+      let bestMove = moves[0];
+      let bestScore = -Infinity;
+
+      for (const to of moves) {
+        const simulated = cloneState(state);
+        simulated.bear = to;
+        const hunterResponses = getHunterLegalMoves(simulated);
+        let worstReply = Infinity;
+        if (hunterResponses.length === 0) {
+          worstReply = evaluateState(simulated, 'bear');
+        } else {
+          for (const reply of hunterResponses) {
+            const afterReply = cloneState(simulated);
+            afterReply.hunters[reply.hunterIndex] = reply.to;
+            worstReply = Math.min(worstReply, evaluateState(afterReply, 'bear'));
+          }
+        }
+
+        if (worstReply > bestScore) {
+          bestScore = worstReply;
+          bestMove = to;
         }
       }
 
-      if (worstReply > bestScore) {
-        bestScore = worstReply;
+      return bestMove;
+    }
+
+    const depth = getDifficultyConfig().bearDepth;
+    let bestMove = moves[0];
+    let bestScore = -Infinity;
+    const transposition = new Map();
+
+    for (const to of moves) {
+      const simulated = applyVirtualMove(state, 'bear', { to });
+      const score = minimax(simulated, depth - 1, 'hunters', 'bear', -Infinity, Infinity, transposition);
+      if (score > bestScore) {
+        bestScore = score;
         bestMove = to;
       }
     }
 
-    applyBearMove(bestMove);
+    return bestMove;
   }
 
-  function computerHuntersMove() {
+  function chooseHunterMoveByDifficulty() {
     const moves = getHunterLegalMoves();
-    if (moves.length === 0) return;
+    if (moves.length === 0) return null;
+
+    if (state.difficulty === 'easy') {
+      let best = moves[0];
+      let bestScore = Infinity;
+
+      for (const move of moves) {
+        const simulated = cloneState(state);
+        simulated.hunters[move.hunterIndex] = move.to;
+        const score = getBearLegalMoves(simulated).length;
+        if (score < bestScore) {
+          bestScore = score;
+          best = move;
+        }
+      }
+
+      return best;
+    }
+
+    const depth = getDifficultyConfig().hunterDepth;
     let best = moves[0];
-    let bestScore = Infinity;
+    let bestScore = -Infinity;
+    const transposition = new Map();
 
     for (const move of moves) {
-      const simulated = cloneState(state);
-      simulated.hunters[move.hunterIndex] = move.to;
-      const mobility = getBearLegalMoves(simulated).length;
-      const score = mobility;
-      if (score < bestScore) {
+      const simulated = applyVirtualMove(state, 'hunters', move);
+      const score = minimax(simulated, depth - 1, 'bear', 'hunters', -Infinity, Infinity, transposition);
+      if (score > bestScore) {
         bestScore = score;
         best = move;
       }
     }
 
+    return best;
+  }
+
+  function computerBearMove() {
+    const bestMove = chooseBearMoveByDifficulty();
+    if (bestMove === null) return;
+    applyBearMove(bestMove);
+  }
+
+  function computerHuntersMove() {
+    const best = chooseHunterMoveByDifficulty();
+    if (!best) return;
     applyHunterMove(best.hunterIndex, best.to);
   }
 
@@ -342,26 +565,66 @@ export function createGame() {
     state.message = "L'Orso sceglie una posizione iniziale.";
   }
 
+  function scoreLunette(lunette) {
+    let bearBestReply = -Infinity;
+
+    for (const node of BOARD_NODES) {
+      if (lunette.includes(node.id)) continue;
+      const simulated = cloneState(state);
+      simulated.hunters = [...lunette];
+      simulated.bear = node.id;
+      const immediate = evaluateState(simulated, 'bear');
+
+      if (state.difficulty === 'easy') {
+        bearBestReply = Math.max(bearBestReply, immediate);
+        continue;
+      }
+
+      const depth = getDifficultyConfig().setupDepth;
+      const responseScore = minimax(simulated, depth, 'bear', 'bear', -Infinity, Infinity, new Map());
+      bearBestReply = Math.max(bearBestReply, responseScore);
+    }
+
+    return bearBestReply;
+  }
+
   function computerChooseHuntersLunette() {
     let bestLunette = HUNTER_LUNETTES[0];
     let bestScore = Infinity;
 
     for (const lunette of HUNTER_LUNETTES) {
-      let bearBestReply = -Infinity;
-      for (const node of BOARD_NODES) {
-        if (lunette.includes(node.id)) continue;
-        const simulated = cloneState(state);
-        simulated.hunters = [...lunette];
-        simulated.bear = node.id;
-        bearBestReply = Math.max(bearBestReply, evaluateState(simulated));
-      }
-      if (bearBestReply < bestScore) {
-        bestScore = bearBestReply;
+      const score = scoreLunette(lunette);
+      if (score < bestScore) {
+        bestScore = score;
         bestLunette = lunette;
       }
     }
 
     chooseHuntersLunette(bestLunette);
+  }
+
+  function chooseBearStartPosition() {
+    const free = BOARD_NODES.map((n) => n.id).filter((id) => !isOccupied(id));
+    let best = free[0];
+    let bestScore = -Infinity;
+
+    for (const pos of free) {
+      const simulated = cloneState(state);
+      simulated.bear = pos;
+      let score = evaluateState(simulated, 'bear');
+
+      if (state.difficulty !== 'easy') {
+        const depth = getDifficultyConfig().setupDepth;
+        score = minimax(simulated, depth, 'bear', 'bear', -Infinity, Infinity, new Map());
+      }
+
+      if (score > bestScore) {
+        bestScore = score;
+        best = pos;
+      }
+    }
+
+    return best;
   }
 
   function scheduleComputerTurn(action) {
@@ -386,19 +649,7 @@ export function createGame() {
     }
 
     if (state.phase === 'setup-bear' && currentControllerFor('bear') === 'computer') {
-      const free = BOARD_NODES.map((n) => n.id).filter((id) => !isOccupied(id));
-      let best = free[0];
-      let bestScore = -Infinity;
-      for (const pos of free) {
-        const simulated = cloneState(state);
-        simulated.bear = pos;
-        const score = evaluateState(simulated);
-        if (score > bestScore) {
-          bestScore = score;
-          best = pos;
-        }
-      }
-      state.bear = best;
+      state.bear = chooseBearStartPosition();
       state.phase = 'playing';
       state.turn = 'bear';
       state.message = "Turno dell'Orso.";
@@ -474,17 +725,19 @@ export function createGame() {
     }
   }
 
-  function setConfig(mode, computerSide) {
+  function setConfig(mode, computerSide, difficulty = 'easy') {
     state.mode = mode;
     state.computerSide = computerSide;
+    state.difficulty = resolveDifficulty(difficulty);
     emitChange();
   }
 
-  function newMatch(mode, computerSide) {
+  function newMatch(mode, computerSide, difficulty = 'easy') {
     matchEpoch += 1;
     state = emptyState();
     state.mode = mode;
     state.computerSide = computerSide;
+    state.difficulty = resolveDifficulty(difficulty);
     emitChange();
     maybeComputerTurn();
   }
@@ -511,6 +764,7 @@ export function createGame() {
     setOnChange,
     hunterLunettes: HUNTER_LUNETTES,
     edges: EDGE_LIST,
-    adjacency
+    adjacency,
+    difficulties: ['easy', 'medium', 'hard']
   };
 }

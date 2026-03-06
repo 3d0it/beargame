@@ -2,9 +2,23 @@ name: Publish Android to Play Store
 
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - 'v*'
+    inputs:
+      track:
+        description: "Play Store track"
+        required: true
+        default: internal
+        type: choice
+        options:
+          - internal
+          - beta
+      release_status:
+        description: "Release status"
+        required: true
+        default: completed
+        type: choice
+        options:
+          - draft
+          - completed
 
 jobs:
   publish:
@@ -51,11 +65,11 @@ jobs:
           keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
           keyPassword: ${{ secrets.KEY_PASSWORD }}
 
-      - name: Upload to Google Play (internal)
+      - name: Upload to Google Play (${{ github.event.inputs.track || 'internal' }})
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.beargame.app
           releaseFiles: ${{ steps.sign_app.outputs.signedReleaseFile }}
-          track: internal
-          status: completed
+          track: ${{ github.event.inputs.track || 'internal' }}
+          status: ${{ github.event.inputs.release_status || 'completed' }}

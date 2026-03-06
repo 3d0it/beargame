@@ -12,6 +12,10 @@ const modeHvCBtn = requiredElement('modeHvCBtn');
 const computerSidePanel = requiredElement('computerSidePanel');
 const computerBearBtn = requiredElement('computerBearBtn');
 const computerHuntersBtn = requiredElement('computerHuntersBtn');
+const difficultyPanel = requiredElement('difficultyPanel');
+const difficultyEasyBtn = requiredElement('difficultyEasyBtn');
+const difficultyMediumBtn = requiredElement('difficultyMediumBtn');
+const difficultyHardBtn = requiredElement('difficultyHardBtn');
 const startMatchBtn = requiredElement('startMatchBtn');
 const backToMenuBtn = requiredElement('backToMenuBtn');
 const newMatchBtn = requiredElement('newMatchBtn');
@@ -33,6 +37,7 @@ const boardRenderer = createBoardRenderer({
 
 let selectedMode = 'hvh';
 let selectedComputerSide = 'bear';
+let selectedDifficulty = 'easy';
 
 function registerServiceWorker() {
   if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
@@ -57,17 +62,32 @@ function setActiveButton(activeBtn, buttons) {
 function updateModeUI() {
   const isVsComputer = selectedMode === 'hvc';
   computerSidePanel.classList.toggle('is-hidden', !isVsComputer);
+  difficultyPanel.classList.toggle('is-hidden', !isVsComputer);
   setActiveButton(selectedMode === 'hvh' ? modeHvHBtn : modeHvCBtn, [modeHvHBtn, modeHvCBtn]);
   setActiveButton(
     selectedComputerSide === 'bear' ? computerBearBtn : computerHuntersBtn,
     [computerBearBtn, computerHuntersBtn]
+  );
+  setActiveButton(
+    selectedDifficulty === 'easy'
+      ? difficultyEasyBtn
+      : selectedDifficulty === 'medium'
+        ? difficultyMediumBtn
+        : difficultyHardBtn,
+    [difficultyEasyBtn, difficultyMediumBtn, difficultyHardBtn]
   );
 }
 
 function humanModeLabel() {
   return selectedMode === 'hvh'
     ? 'Modalità: 2 Giocatori'
-    : `Modalità: Contro PC (manche 1: PC = ${selectedComputerSide === 'bear' ? 'Orso' : 'Cacciatori'})`;
+    : `Modalità: Contro PC (${difficultyLabel(selectedDifficulty)}, manche 1: PC = ${selectedComputerSide === 'bear' ? 'Orso' : 'Cacciatori'})`;
+}
+
+function difficultyLabel(difficulty) {
+  if (difficulty === 'medium') return 'Medio';
+  if (difficulty === 'hard') return 'Difficile';
+  return 'Facile';
 }
 
 function showGameScreen() {
@@ -215,7 +235,7 @@ function applyResultBanner(state) {
 }
 
 function startMatch() {
-  game.newMatch(selectedMode, selectedComputerSide);
+  game.newMatch(selectedMode, selectedComputerSide, selectedDifficulty);
   showGameScreen();
   refreshGameUI();
 }
@@ -240,10 +260,25 @@ computerHuntersBtn.addEventListener('click', () => {
   updateModeUI();
 });
 
+difficultyEasyBtn.addEventListener('click', () => {
+  selectedDifficulty = 'easy';
+  updateModeUI();
+});
+
+difficultyMediumBtn.addEventListener('click', () => {
+  selectedDifficulty = 'medium';
+  updateModeUI();
+});
+
+difficultyHardBtn.addEventListener('click', () => {
+  selectedDifficulty = 'hard';
+  updateModeUI();
+});
+
 startMatchBtn.addEventListener('click', startMatch);
 
 newMatchBtn.addEventListener('click', () => {
-  game.newMatch(selectedMode, selectedComputerSide);
+  game.newMatch(selectedMode, selectedComputerSide, selectedDifficulty);
   refreshGameUI();
 });
 
