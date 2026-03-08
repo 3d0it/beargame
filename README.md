@@ -58,7 +58,8 @@ Workflow: `.github/workflows/publish-playstore.yml`
 - `KEY_ALIAS`
 - `KEYSTORE_PASSWORD`
 - `KEY_PASSWORD`
-- `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`
+- `GCP_WORKLOAD_IDENTITY_PROVIDER`
+- `GCP_SERVICE_ACCOUNT_EMAIL`
 
 ## Note architetturali
 - UI e logica di gioco in `web/`.
