@@ -29,7 +29,6 @@ export function createBoardRenderer({ board, game, onAfterNodeClick }) {
       const hit = createCircle(node.x, node.y, 4.8, 'node-hit');
       hit.addEventListener('click', () => {
         game.clickNode(node.id);
-        render();
         onAfterNodeClick?.();
       });
       board.appendChild(hit);

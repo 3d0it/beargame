@@ -150,6 +150,7 @@ describe('createBoardRenderer', () => {
     expect(clickNode).toHaveBeenCalledWith(17);
     expect(afterClick).toHaveBeenCalledTimes(1);
 
+    renderer.render();
     const hasBearPiece = visit(board, (el) => el.getAttribute('class') === 'piece piece-bear');
     expect(hasBearPiece).not.toBeNull();
 
