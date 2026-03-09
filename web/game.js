@@ -51,7 +51,7 @@ const lunetteByNode = new Map();
 for (const lunette of HUNTER_LUNETTES) {
   for (const nodeId of lunette) lunetteByNode.set(nodeId, lunette);
 }
-const MAX_BEAR_MOVES = 40;
+export const MAX_BEAR_MOVES = 40;
 
 export function controllerFor({ mode, computerSide, round, side }) {
   if (mode === 'hvh') return 'human';
@@ -121,6 +121,8 @@ for (const [a, b] of EDGE_LIST) {
   adjacency.get(a).push(b);
   adjacency.get(b).push(a);
 }
+const NODE_IDS = new Set(BOARD_NODES.map((node) => node.id));
+const NODE_BY_ID = new Map(BOARD_NODES.map((node) => [node.id, node]));
 
 function emptyState() {
   return {
@@ -145,6 +147,7 @@ export function createGame() {
   let state = emptyState();
   let onChange = null;
   let matchEpoch = 0;
+  let pendingComputerTurn = false;
 
   function emitChange() {
     onChange?.();
@@ -162,16 +165,21 @@ export function createGame() {
     return GAME_DIFFICULTIES.has(nextDifficulty) ? nextDifficulty : 'easy';
   }
 
+  function isValidNodeId(nodeId) {
+    return Number.isInteger(nodeId) && NODE_IDS.has(nodeId);
+  }
+
   function isOccupied(nodeId, local = state) {
     return local.bear === nodeId || local.hunters.includes(nodeId);
   }
 
   function canMove(from, to, local = state) {
+    if (!isValidNodeId(from) || !isValidNodeId(to)) return false;
     return adjacency.get(from).includes(to) && !isOccupied(to, local);
   }
 
   function getBearLegalMoves(local = state) {
-    if (local.bear === null) return [];
+    if (!isValidNodeId(local.bear)) return [];
     return adjacency.get(local.bear).filter((to) => !isOccupied(to, local));
   }
 
@@ -179,6 +187,7 @@ export function createGame() {
     const result = [];
     for (let i = 0; i < local.hunters.length; i += 1) {
       const from = local.hunters[i];
+      if (!isValidNodeId(from)) continue;
       for (const to of adjacency.get(from)) {
         if (!isOccupied(to, local)) {
           result.push({ hunterIndex: i, from, to });
@@ -254,6 +263,9 @@ export function createGame() {
   }
 
   function applyHunterMove(hunterIndex, to) {
+    if (!Number.isInteger(hunterIndex) || hunterIndex < 0 || hunterIndex >= state.hunters.length) {
+      return false;
+    }
     const from = state.hunters[hunterIndex];
     if (!canMove(from, to)) return false;
     state.hunters[hunterIndex] = to;
@@ -291,8 +303,8 @@ export function createGame() {
   }
 
   function nodeDistance(a, b) {
-    const nodeA = BOARD_NODES[a];
-    const nodeB = BOARD_NODES[b];
+    const nodeA = NODE_BY_ID.get(a);
+    const nodeB = NODE_BY_ID.get(b);
     if (!nodeA || !nodeB) return 0;
     const dx = nodeA.x - nodeB.x;
     const dy = nodeA.y - nodeB.y;
@@ -605,6 +617,7 @@ export function createGame() {
 
   function chooseBearStartPosition() {
     const free = BOARD_NODES.map((n) => n.id).filter((id) => !isOccupied(id));
+    if (free.length === 0) return null;
     let best = free[0];
     let bestScore = -Infinity;
 
@@ -628,8 +641,11 @@ export function createGame() {
   }
 
   function scheduleComputerTurn(action) {
+    if (pendingComputerTurn) return;
+    pendingComputerTurn = true;
     const epoch = captureEpoch();
     setTimeout(() => {
+      pendingComputerTurn = false;
       if (!isCurrentEpoch(epoch)) return;
       action();
       if (!isCurrentEpoch(epoch)) return;
@@ -649,7 +665,18 @@ export function createGame() {
     }
 
     if (state.phase === 'setup-bear' && currentControllerFor('bear') === 'computer') {
-      state.bear = chooseBearStartPosition();
+      const chosen = chooseBearStartPosition();
+      if (chosen === null) {
+        state.hunters = [];
+        state.bear = null;
+        state.selectedHunter = null;
+        state.phase = 'setup-hunters';
+        state.turn = 'hunters';
+        state.message = 'Stato non valido rilevato. I Cacciatori devono scegliere di nuovo una lunetta.';
+        emitChange();
+        return;
+      }
+      state.bear = chosen;
       state.phase = 'playing';
       state.turn = 'bear';
       state.message = "Turno dell'Orso.";
@@ -677,6 +704,7 @@ export function createGame() {
   }
 
   function clickNode(nodeId) {
+    if (!isValidNodeId(nodeId)) return;
     if (state.phase === 'match-over' || state.phase === 'tie-after-two-rounds') return;
 
     if (state.phase === 'setup-hunters') {
@@ -734,6 +762,7 @@ export function createGame() {
 
   function newMatch(mode, computerSide, difficulty = 'easy') {
     matchEpoch += 1;
+    pendingComputerTurn = false;
     state = emptyState();
     state.mode = mode;
     state.computerSide = computerSide;

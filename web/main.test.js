@@ -117,7 +117,11 @@ function setupDom() {
       getComputedStyle: vi.fn(() => ({
         paddingLeft: '10',
         paddingRight: '10'
-      }))
+      })),
+      localStorage: {
+        getItem: vi.fn(() => null),
+        setItem: vi.fn()
+      }
     }
   });
 
@@ -135,9 +139,10 @@ function setupNavigator(registerMock) {
   });
 }
 
-async function importMainWithMocks({ registerMock, state }) {
+async function importMainWithMocks({ registerMock, state, storedSettingsRaw = null }) {
   vi.resetModules();
   const elements = setupDom();
+  window.localStorage.getItem.mockReturnValue(storedSettingsRaw);
   setupNavigator(registerMock);
 
   const gameMock = {
@@ -150,6 +155,7 @@ async function importMainWithMocks({ registerMock, state }) {
   const renderMock = vi.fn();
 
   vi.doMock('./game.js', () => ({
+    MAX_BEAR_MOVES: 40,
     createGame: () => gameMock
   }));
 
@@ -241,6 +247,49 @@ describe('main.js', () => {
     elements.startMatchBtn.dispatch('click');
 
     expect(gameMock.newMatch).toHaveBeenCalledWith('hvc', 'bear', 'hard');
+  });
+
+  it('carica impostazioni persistite valide da localStorage', async () => {
+    const state = {
+      current: {
+        round: 1,
+        turn: 'hunters',
+        bearMoves: 0,
+        message: 'setup'
+      }
+    };
+
+    const { elements } = await importMainWithMocks({
+      registerMock: vi.fn(() => Promise.resolve()),
+      state,
+      storedSettingsRaw: JSON.stringify({ mode: 'hvc', computerSide: 'hunters', difficulty: 'hard' })
+    });
+
+    expect(elements.computerSidePanel.classList.contains('is-hidden')).toBe(false);
+    expect(elements.difficultyPanel.classList.contains('is-hidden')).toBe(false);
+    expect(elements.computerHuntersBtn.classList.contains('is-active')).toBe(true);
+    expect(elements.difficultyHardBtn.classList.contains('is-active')).toBe(true);
+  });
+
+  it('usa fallback safe se localStorage contiene JSON corrotto', async () => {
+    const state = {
+      current: {
+        round: 1,
+        turn: 'hunters',
+        bearMoves: 0,
+        message: 'setup'
+      }
+    };
+
+    const { elements } = await importMainWithMocks({
+      registerMock: vi.fn(() => Promise.resolve()),
+      state,
+      storedSettingsRaw: '{bad-json'
+    });
+
+    expect(elements.modeHvHBtn.classList.contains('is-active')).toBe(true);
+    expect(elements.computerBearBtn.classList.contains('is-active')).toBe(true);
+    expect(elements.difficultyEasyBtn.classList.contains('is-active')).toBe(true);
   });
 
   it('aggiorna status quando il motore invoca onChange', async () => {
@@ -344,6 +393,92 @@ describe('main.js', () => {
     expect(elements.messageLabel.textContent).toContain('vince Umano');
   });
 
+  it('nel riepilogo finale distingue quando anche il perdente immobilizza l orso', async () => {
+    const state = {
+      current: {
+        mode: 'hvc',
+        computerSide: 'bear',
+        round: 2,
+        phase: 'match-over',
+        turn: null,
+        bearMoves: 34,
+        message: 'Partita conclusa',
+        matchSummary: { isTie: false, winnerPlayer: 'player-2' },
+        roundResults: [
+          {
+            round: 1,
+            reason: 'hunters-win',
+            immobilizationMoves: 23,
+            bearPlayer: 'player-1',
+            huntersPlayer: 'player-2'
+          },
+          {
+            round: 2,
+            reason: 'hunters-win',
+            immobilizationMoves: 34,
+            bearPlayer: 'player-2',
+            huntersPlayer: 'player-1'
+          }
+        ]
+      }
+    };
+
+    const { elements, gameMock } = await importMainWithMocks({
+      registerMock: vi.fn(() => Promise.resolve()),
+      state
+    });
+
+    const onChange = gameMock.setOnChange.mock.calls[0][0];
+    onChange();
+
+    expect(elements.matchResultLabel.textContent).toContain('vince Umano');
+    expect(elements.matchResultLabel.textContent).toContain('Computer ci è riuscito in 34 mosse');
+    expect(elements.matchResultLabel.textContent).not.toContain('non ci è riuscito entro 40');
+  });
+
+  it('evita copy incoerente con mosse mancanti nel round del perdente', async () => {
+    const state = {
+      current: {
+        mode: 'hvc',
+        computerSide: 'bear',
+        round: 2,
+        phase: 'match-over',
+        turn: null,
+        bearMoves: 23,
+        message: 'Partita conclusa',
+        matchSummary: { isTie: false, winnerPlayer: 'player-2' },
+        roundResults: [
+          {
+            round: 1,
+            reason: 'hunters-win',
+            immobilizationMoves: 23,
+            bearPlayer: 'player-1',
+            huntersPlayer: 'player-2'
+          },
+          {
+            round: 2,
+            reason: 'hunters-win',
+            immobilizationMoves: null,
+            bearPlayer: 'player-2',
+            huntersPlayer: 'player-1'
+          }
+        ]
+      }
+    };
+
+    const { elements, gameMock } = await importMainWithMocks({
+      registerMock: vi.fn(() => Promise.resolve()),
+      state
+    });
+
+    const onChange = gameMock.setOnChange.mock.calls[0][0];
+    onChange();
+
+    expect(elements.matchResultLabel.textContent).toContain('vince Umano');
+    expect(elements.matchResultLabel.textContent).toContain('mosse non disponibili');
+    expect(elements.matchResultLabel.textContent).not.toContain('null mosse');
+  });
+
   it('gestisce risultati tie e ultimo esito nel banner', async () => {
     const state = {
       current: {
@@ -438,6 +573,7 @@ describe('main.js', () => {
     const renderMock = vi.fn();
 
     vi.doMock('./game.js', () => ({
+      MAX_BEAR_MOVES: 40,
       createGame: () => gameMock
     }));
     vi.doMock('./board-renderer.js', () => ({
@@ -504,6 +640,7 @@ describe('main.js', () => {
     };
 
     vi.doMock('./game.js', () => ({
+      MAX_BEAR_MOVES: 40,
       createGame: () => gameMock
     }));
     vi.doMock('./board-renderer.js', () => ({

@@ -151,6 +151,18 @@ describe('createGame', () => {
     expect(state.bearMoves).toBe(0);
   });
 
+  it('ignora input nodo non valido senza alterare lo stato', () => {
+    const game = createGame();
+    game.newMatch('hvh', 'bear', 'easy');
+    const before = game.getState();
+
+    game.clickNode(-1);
+    game.clickNode(999);
+
+    const after = game.getState();
+    expect(after).toEqual(before);
+  });
+
   it('mantiene selezione cacciatore se la destinazione non e valida', () => {
     const game = createGame();
     game.newMatch('hvh', 'bear', 'easy');

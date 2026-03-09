@@ -1,7 +1,8 @@
-import { createGame } from './game.js';
+import { MAX_BEAR_MOVES, createGame } from './game.js';
 import { createBoardRenderer } from './board-renderer.js';
 
 registerServiceWorker();
+const SETTINGS_STORAGE_KEY = 'beargame.settings.v1';
 
 const game = createGame();
 const board = requiredElement('board');
@@ -38,6 +39,7 @@ const boardRenderer = createBoardRenderer({
 let selectedMode = 'hvh';
 let selectedComputerSide = 'bear';
 let selectedDifficulty = 'easy';
+loadSavedSettings();
 
 function registerServiceWorker() {
   if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
@@ -51,6 +53,54 @@ function requiredElement(id) {
   const element = document.getElementById(id);
   if (!element) throw new Error(`Missing required DOM element: #${id}`);
   return element;
+}
+
+function isStorageAvailable() {
+  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+}
+
+function normalizeMode(mode) {
+  return mode === 'hvc' ? 'hvc' : 'hvh';
+}
+
+function normalizeComputerSide(side) {
+  return side === 'hunters' ? 'hunters' : 'bear';
+}
+
+function normalizeDifficulty(difficulty) {
+  if (difficulty === 'medium') return 'medium';
+  if (difficulty === 'hard') return 'hard';
+  return 'easy';
+}
+
+function loadSavedSettings() {
+  if (!isStorageAvailable()) return;
+  try {
+    const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    selectedMode = normalizeMode(parsed?.mode);
+    selectedComputerSide = normalizeComputerSide(parsed?.computerSide);
+    selectedDifficulty = normalizeDifficulty(parsed?.difficulty);
+  } catch {
+    selectedMode = 'hvh';
+    selectedComputerSide = 'bear';
+    selectedDifficulty = 'easy';
+  }
+}
+
+function saveSettings() {
+  if (!isStorageAvailable()) return;
+  const payload = {
+    mode: selectedMode,
+    computerSide: selectedComputerSide,
+    difficulty: selectedDifficulty
+  };
+  try {
+    window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(payload));
+  } catch {
+    // Ignore quota/security errors and keep running with in-memory settings.
+  }
 }
 
 function setActiveButton(activeBtn, buttons) {
@@ -78,10 +128,14 @@ function updateModeUI() {
   );
 }
 
-function humanModeLabel() {
-  return selectedMode === 'hvh'
+function humanModeLabel(state) {
+  const mode = state.mode ?? selectedMode;
+  const computerSide = state.computerSide ?? selectedComputerSide;
+  const difficulty = state.difficulty ?? selectedDifficulty;
+
+  return mode === 'hvh'
     ? 'Modalità: 2 Giocatori'
-    : `Modalità: Contro PC (${difficultyLabel(selectedDifficulty)}, manche 1: PC = ${selectedComputerSide === 'bear' ? 'Orso' : 'Cacciatori'})`;
+    : `Modalità: Contro PC (${difficultyLabel(difficulty)}, manche 1: PC = ${computerSide === 'bear' ? 'Orso' : 'Cacciatori'})`;
 }
 
 function difficultyLabel(difficulty) {
@@ -102,19 +156,19 @@ function showStartScreen() {
 
 function updateStatus() {
   const state = game.getState();
-  gameModeLabel.textContent = humanModeLabel();
+  gameModeLabel.textContent = humanModeLabel(state);
   roundLabel.textContent = `Manche: ${state.round}/2`;
   turnLabel.textContent = state.turn
     ? `Turno: ${state.turn === 'bear' ? 'Orso' : 'Cacciatori'}`
     : 'Turno: -';
-  movesLabel.textContent = `Mosse Orso: ${state.bearMoves}/40`;
+  movesLabel.textContent = `Mosse Orso: ${state.bearMoves}/${MAX_BEAR_MOVES}`;
   messageLabel.textContent = primaryMessage(state);
 
   const roundResults = state.roundResults ?? [];
   const firstRound = roundResults[0] ?? null;
   const secondRound = roundResults[1] ?? null;
-  roundOneResult.textContent = describeRoundResult(firstRound, 1);
-  roundTwoResult.textContent = describeRoundResult(secondRound, 2);
+  roundOneResult.textContent = describeRoundResult(firstRound, 1, state);
+  roundTwoResult.textContent = describeRoundResult(secondRound, 2, state);
   matchResultLabel.textContent = describeMatchResult(state);
   applyResultBanner(state);
 }
@@ -164,8 +218,7 @@ function getPanelContentWidth(panel, fallbackWidth) {
   return Math.max(0, contentWidth);
 }
 
-function playerLabel(playerId) {
-  const state = game.getState();
+function playerLabel(playerId, state = game.getState()) {
   const mode = state.mode ?? selectedMode;
   const computerSide = state.computerSide ?? selectedComputerSide;
 
@@ -180,29 +233,48 @@ function playerLabel(playerId) {
   return '-';
 }
 
-function describeRoundResult(roundResult, fallbackRoundNumber) {
+function hasValidImmobilizationMoves(value) {
+  return Number.isInteger(value) && value >= 0;
+}
+
+function describeRoundResult(roundResult, fallbackRoundNumber, state) {
   if (!roundResult) return `Manche ${fallbackRoundNumber}: in attesa`;
-  const hunters = playerLabel(roundResult.huntersPlayer);
-  const bear = playerLabel(roundResult.bearPlayer);
+  const hunters = playerLabel(roundResult.huntersPlayer, state);
+  const bear = playerLabel(roundResult.bearPlayer, state);
   if (roundResult.reason === 'hunters-win') {
+    if (!hasValidImmobilizationMoves(roundResult.immobilizationMoves)) {
+      return `Manche ${roundResult.round}: vincono i Cacciatori (${hunters}), Orso (${bear}) bloccato (mosse non disponibili).`;
+    }
     return `Manche ${roundResult.round}: vincono i Cacciatori (${hunters}), Orso (${bear}) bloccato in ${roundResult.immobilizationMoves} mosse.`;
   }
-  return `Manche ${roundResult.round}: patta, Orso (${bear}) non immobilizzato entro 40 mosse.`;
+  return `Manche ${roundResult.round}: patta, Orso (${bear}) non immobilizzato entro ${MAX_BEAR_MOVES} mosse.`;
 }
 
 function describeMatchResult(state) {
   if (!state.matchSummary) return 'Risultato finale: in attesa della seconda manche';
   if (state.matchSummary.isTie) return 'Risultato finale: parità';
-  const winner = playerLabel(state.matchSummary.winnerPlayer);
+  const winner = playerLabel(state.matchSummary.winnerPlayer, state);
+  const loserPlayer = state.matchSummary.winnerPlayer === 'player-1' ? 'player-2' : 'player-1';
+  const loser = playerLabel(loserPlayer, state);
   const roundResults = state.roundResults ?? [];
   const winnerRound = roundResults.find(
     (roundResult) =>
       roundResult.huntersPlayer === state.matchSummary.winnerPlayer && roundResult.reason === 'hunters-win'
   );
+  const loserRound = roundResults.find(
+    (roundResult) => roundResult.huntersPlayer === loserPlayer && roundResult.reason === 'hunters-win'
+  );
 
-  if (!winnerRound) return `Risultato finale: vince ${winner}`;
-  const loser = playerLabel(state.matchSummary.winnerPlayer === 'player-1' ? 'player-2' : 'player-1');
-  return `Risultato finale: vince ${winner}. Ha immobilizzato l'Orso in ${winnerRound.immobilizationMoves} mosse; ${loser} non ci è riuscito entro 40.`;
+  if (!winnerRound || !hasValidImmobilizationMoves(winnerRound.immobilizationMoves)) {
+    return `Risultato finale: vince ${winner}`;
+  }
+  if (loserRound) {
+    if (!hasValidImmobilizationMoves(loserRound.immobilizationMoves)) {
+      return `Risultato finale: vince ${winner}. Ha immobilizzato l'Orso in ${winnerRound.immobilizationMoves} mosse; ${loser} ha immobilizzato l'Orso (mosse non disponibili).`;
+    }
+    return `Risultato finale: vince ${winner}. Ha immobilizzato l'Orso in ${winnerRound.immobilizationMoves} mosse; ${loser} ci è riuscito in ${loserRound.immobilizationMoves} mosse.`;
+  }
+  return `Risultato finale: vince ${winner}. Ha immobilizzato l'Orso in ${winnerRound.immobilizationMoves} mosse; ${loser} non ci è riuscito entro ${MAX_BEAR_MOVES}.`;
 }
 
 function primaryMessage(state) {
@@ -241,42 +313,50 @@ function applyResultBanner(state) {
 
 function startMatch() {
   game.newMatch(selectedMode, selectedComputerSide, selectedDifficulty);
+  saveSettings();
   showGameScreen();
   refreshGameUI();
 }
 
 modeHvHBtn.addEventListener('click', () => {
   selectedMode = 'hvh';
+  saveSettings();
   updateModeUI();
 });
 
 modeHvCBtn.addEventListener('click', () => {
   selectedMode = 'hvc';
+  saveSettings();
   updateModeUI();
 });
 
 computerBearBtn.addEventListener('click', () => {
   selectedComputerSide = 'bear';
+  saveSettings();
   updateModeUI();
 });
 
 computerHuntersBtn.addEventListener('click', () => {
   selectedComputerSide = 'hunters';
+  saveSettings();
   updateModeUI();
 });
 
 difficultyEasyBtn.addEventListener('click', () => {
   selectedDifficulty = 'easy';
+  saveSettings();
   updateModeUI();
 });
 
 difficultyMediumBtn.addEventListener('click', () => {
   selectedDifficulty = 'medium';
+  saveSettings();
   updateModeUI();
 });
 
 difficultyHardBtn.addEventListener('click', () => {
   selectedDifficulty = 'hard';
+  saveSettings();
   updateModeUI();
 });
 
@@ -284,6 +364,7 @@ startMatchBtn.addEventListener('click', startMatch);
 
 newMatchBtn.addEventListener('click', () => {
   game.newMatch(selectedMode, selectedComputerSide, selectedDifficulty);
+  saveSettings();
   refreshGameUI();
 });
 
