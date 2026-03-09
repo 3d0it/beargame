@@ -155,7 +155,12 @@ function getPanelContentWidth(panel, fallbackWidth) {
   const style = window.getComputedStyle(panel);
   const paddingLeft = parseFloat(style.paddingLeft || '0') || 0;
   const paddingRight = parseFloat(style.paddingRight || '0') || 0;
-  const contentWidth = (fallbackWidth || panel.clientWidth || 0) - paddingLeft - paddingRight;
+  const borderLeft = parseFloat(style.borderLeftWidth || '0') || 0;
+  const borderRight = parseFloat(style.borderRightWidth || '0') || 0;
+  const hasClientWidth = Number.isFinite(panel.clientWidth) && panel.clientWidth > 0;
+  const baseWidth = hasClientWidth ? panel.clientWidth : (fallbackWidth || 0);
+  const borderWidth = hasClientWidth ? 0 : borderLeft + borderRight;
+  const contentWidth = baseWidth - paddingLeft - paddingRight - borderWidth;
   return Math.max(0, contentWidth);
 }
 

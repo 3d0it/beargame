@@ -9,10 +9,18 @@
   --hunter: #48a8e8;
   --accent: #f7c66b;
   --edge-glow: rgba(247, 198, 107, 0.2);
+  --safe-top: env(safe-area-inset-top, 0px);
 }
 
 * {
   box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -30,17 +38,19 @@ body {
 .app {
   max-width: 1000px;
   margin: 0 auto;
-  padding: 1rem;
+  padding: calc(1rem + var(--safe-top)) 1rem 1rem;
 }
 
 .screen {
   display: grid;
   gap: 1rem;
+  min-width: 0;
 }
 
 .left-stack {
   display: grid;
   gap: 0.8rem;
+  min-width: 0;
 }
 
 .is-hidden {
@@ -189,6 +199,11 @@ h2 {
   padding: 0.9rem;
   display: grid;
   gap: 0.8rem;
+  min-width: 0;
+}
+
+.game-header > div {
+  min-width: 0;
 }
 
 .game-header h2 {
@@ -200,6 +215,7 @@ h2 {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 0.6rem;
+  min-width: 0;
 }
 
 .actions button {
@@ -211,6 +227,7 @@ h2 {
 .board-panel,
 .legend {
   padding: 0.9rem;
+  min-width: 0;
 }
 
 .board-panel {
@@ -278,6 +295,7 @@ h2 {
 
 #board {
   display: block;
+  max-width: 100%;
   width: min(100%, 92vw);
   height: auto;
   aspect-ratio: 1 / 1;
@@ -410,7 +428,7 @@ h2 {
 
 @media (min-width: 760px) {
   .app {
-    padding: 1.5rem;
+    padding: calc(1.5rem + var(--safe-top)) 1.5rem 1.5rem;
   }
 
   .screen {
@@ -466,7 +484,7 @@ h2 {
 
 @media (max-width: 480px) {
   .app {
-    padding: 0.6rem;
+    padding: calc(0.6rem + var(--safe-top)) 0.6rem 0.6rem;
   }
 
   .screen {
@@ -534,7 +552,7 @@ h2 {
 
 @media (max-width: 480px) and (max-height: 800px) {
   .app {
-    padding: 0.45rem;
+    padding: calc(0.45rem + var(--safe-top)) 0.45rem 0.45rem;
   }
 
   .screen {

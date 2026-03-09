@@ -19,13 +19,45 @@ on:
         options:
           - draft
           - completed
+      ui_profile:
+        description: "UI viewport test profile before publish"
+        required: true
+        default: full
+        type: choice
+        options:
+          - smoke
+          - full
 
 permissions:
   contents: read
   id-token: write
 
 jobs:
+  ui_guard:
+    runs-on: ubuntu-latest
+    env:
+      PW_VIEWPORT_PROFILE: ${{ github.event.inputs.ui_profile || 'full' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run viewport UI tests (${{ env.PW_VIEWPORT_PROFILE }})
+        run: npm run test:e2e
+
   publish:
+    needs: ui_guard
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

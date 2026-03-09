@@ -450,6 +450,39 @@ describe('main.js', () => {
     expect(gameMock.setOnChange).toHaveBeenCalledTimes(1);
   });
 
+  it('non supera la larghezza utile del pannello board (anti overflow orizzontale)', async () => {
+    const state = {
+      current: {
+        round: 1,
+        turn: 'hunters',
+        bearMoves: 0,
+        message: 'setup'
+      }
+    };
+
+    const { elements } = await importMainWithMocks({
+      registerMock: vi.fn(() => Promise.resolve()),
+      state
+    });
+
+    const boardPanel = elements.board._closest;
+    boardPanel.clientWidth = 0;
+    boardPanel.getBoundingClientRect = () => ({ top: 120, width: 320 });
+
+    window.getComputedStyle = vi.fn(() => ({
+      paddingLeft: '14',
+      paddingRight: '14',
+      borderLeftWidth: '1',
+      borderRightWidth: '1'
+    }));
+
+    elements.startMatchBtn.dispatch('click');
+
+    const boardWidth = Number.parseInt(elements.board.style.width, 10);
+    expect(Number.isFinite(boardWidth)).toBe(true);
+    expect(boardWidth).toBeLessThanOrEqual(290);
+  });
+
   it('non fallisce quando navigator non esiste', async () => {
     vi.resetModules();
     setupDom();
