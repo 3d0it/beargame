@@ -25,8 +25,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run tests with coverage
+      - name: Run test suite
+        run: npm test
+
+      - name: Collect coverage report
         run: npm run test:coverage
+
+      - name: Build web app
+        run: npm run build
 
       - name: Audit dependencies (high/critical)
         run: npm audit --omit=dev --audit-level=high
