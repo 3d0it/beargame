@@ -55,8 +55,8 @@
     1.4% 16%
   );
 
-  /* Optional variant: set to url('./forgnengo-sketch.jpg') */
-  --village-artwork: url('./forgnengo-sketch.jpg');
+  /* Optional variant: set to url('./backgorund-sketch.png') */
+  --village-artwork: url('./backgorund-sketch.png');
 }
 
 * {
