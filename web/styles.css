@@ -55,8 +55,8 @@
     1.4% 16%
   );
 
-  /* Optional variant: set to url('./backgorund-sketch.png') */
-  --village-artwork: url('./backgorund-sketch.png');
+  /* Optional variant: set to url('./background-sketch.png') */
+  --village-artwork: url('./background-sketch.png');
 }
 
 * {

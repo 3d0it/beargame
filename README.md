@@ -1,5 +1,7 @@
 # Gioco dell'Orso
 
+Questo progetto è usato per esplorare la programmazione con agenti, implementando un gioco tradizionale diffuso nei villaggi alpini, in particolare nella Valle Cervo.
+
 Implementazione a codebase unica del gioco dell'orso con:
 - Modalità `umano vs umano`
 - Modalità `umano vs computer` con livelli `facile`, `medio`, `difficile`
@@ -64,6 +66,13 @@ Workflow: `.github/workflows/publish-playstore.yml`
 ## Note architetturali
 - UI e logica di gioco in `web/`.
 - Capacitor incapsula la stessa web app per Android, senza duplicare la logica.
+
+## Artwork
+Illustrazioni originali generate con AI.
+
+## Disclaimer
+Tutti i marchi, nomi e segni distintivi eventualmente citati appartengono ai rispettivi proprietari.
+Questo progetto è indipendente, senza affiliazione o approvazione ufficiale da parte di terzi.
 
 ## Licenza
 MIT, vedi `LICENSE`.
