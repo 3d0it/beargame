@@ -53,10 +53,10 @@ jobs:
       PW_VIEWPORT_PROFILE: ${{ github.event.inputs.ui_profile || 'full' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -76,10 +76,10 @@ jobs:
     environment: ${{ github.event.inputs.track == 'production' && 'production' || 'playstore' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 22
 
