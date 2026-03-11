@@ -4,6 +4,7 @@ import { createBoardRenderer } from './board-renderer.js';
 registerServiceWorker();
 const SETTINGS_STORAGE_KEY = 'beargame.settings.v1';
 const FIRST_MATCH_TUTORIAL_KEY = 'beargame.first-match-tutorial.v1';
+const FINAL_STATUS_HINT = 'Partita conclusa.';
 const FIRST_MATCH_TUTORIAL_STEPS = [
   "Scopo: i Cacciatori vincono se bloccano l'Orso; l'Orso fa patta se resta libero per 40 mosse.",
   'Setup Cacciatori: all inizio scegli una lunetta, cioè una delle 4 terne di posizioni iniziali. Sul tavoliere le lunette valide sono evidenziate.',
@@ -237,7 +238,7 @@ function humanModeLabel(state) {
 
   return mode === 'hvh'
     ? 'Modalità: 2 Giocatori'
-    : `Modalità: Contro PC (${difficultyLabel(difficulty)}, manche 1: PC = ${computerSide === 'bear' ? 'Orso' : 'Cacciatori'})`;
+    : `Modalità: Contro IA (${difficultyLabel(difficulty)}, manche 1: IA = ${computerSide === 'bear' ? 'Orso' : 'Cacciatori'})`;
 }
 
 function difficultyLabel(difficulty) {
@@ -278,46 +279,6 @@ function updateStatus() {
 function refreshGameUI() {
   boardRenderer.render();
   updateStatus();
-  fitBoardToViewport();
-}
-
-function fitBoardToViewport() {
-  if (typeof window === 'undefined') return;
-  if (gameScreen.classList.contains('is-hidden')) return;
-  if (typeof board.closest !== 'function') return;
-
-  const boardPanel = board.closest('.board-panel');
-  if (!boardPanel || typeof boardPanel.getBoundingClientRect !== 'function') return;
-
-  const panelRect = boardPanel.getBoundingClientRect();
-  const viewportHeight = window.innerHeight || 0;
-  const panelWidth = getPanelContentWidth(boardPanel, panelRect.width);
-  if (viewportHeight <= 0 || panelWidth <= 0) return;
-
-  const bottomSafeGap = 12;
-  const availableHeight = Math.max(220, viewportHeight - panelRect.top - bottomSafeGap);
-  const desktopCap = window.innerWidth >= 1100 ? viewportHeight * 0.7 : Number.POSITIVE_INFINITY;
-  const nextSize = Math.floor(Math.min(panelWidth, availableHeight, desktopCap));
-
-  board.style.width = `${nextSize}px`;
-  board.style.height = `${nextSize}px`;
-}
-
-function getPanelContentWidth(panel, fallbackWidth) {
-  if (typeof window === 'undefined' || typeof window.getComputedStyle !== 'function') {
-    return panel.clientWidth || fallbackWidth || 0;
-  }
-
-  const style = window.getComputedStyle(panel);
-  const paddingLeft = parseFloat(style.paddingLeft || '0') || 0;
-  const paddingRight = parseFloat(style.paddingRight || '0') || 0;
-  const borderLeft = parseFloat(style.borderLeftWidth || '0') || 0;
-  const borderRight = parseFloat(style.borderRightWidth || '0') || 0;
-  const hasClientWidth = Number.isFinite(panel.clientWidth) && panel.clientWidth > 0;
-  const baseWidth = hasClientWidth ? panel.clientWidth : (fallbackWidth || 0);
-  const borderWidth = hasClientWidth ? 0 : borderLeft + borderRight;
-  const contentWidth = baseWidth - paddingLeft - paddingRight - borderWidth;
-  return Math.max(0, contentWidth);
 }
 
 function playerLabel(playerId, state = game.getState()) {
@@ -326,8 +287,8 @@ function playerLabel(playerId, state = game.getState()) {
 
   if (mode === 'hvc') {
     const computerIsPlayer1 = computerSide === 'bear';
-    if (playerId === 'player-1') return computerIsPlayer1 ? 'Computer' : 'Umano';
-    if (playerId === 'player-2') return computerIsPlayer1 ? 'Umano' : 'Computer';
+    if (playerId === 'player-1') return computerIsPlayer1 ? 'IA' : 'Umano';
+    if (playerId === 'player-2') return computerIsPlayer1 ? 'Umano' : 'IA';
   }
 
   if (playerId === 'player-1') return 'Giocatore 1';
@@ -381,7 +342,7 @@ function describeMatchResult(state) {
 
 function primaryMessage(state) {
   if (state.phase === 'match-over' || state.phase === 'tie-after-two-rounds') {
-    return describeMatchResult(state);
+    return FINAL_STATUS_HINT;
   }
   return state.message;
 }
@@ -475,9 +436,5 @@ newMatchBtn.addEventListener('click', () => {
 backToMenuBtn.addEventListener('click', showStartScreen);
 
 game.setOnChange(refreshGameUI);
-if (typeof window !== 'undefined') {
-  window.addEventListener('resize', fitBoardToViewport);
-  window.addEventListener('orientationchange', fitBoardToViewport);
-}
 
 updateModeUI();

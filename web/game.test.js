@@ -207,7 +207,7 @@ describe('createGame', () => {
     expect(state.roundResults[0].reason).toBe('draw');
     expect(state.roundResults[0].huntersPlayer).toBe('player-2');
     expect(state.lastRoundResult?.round).toBe(1);
-    expect(state.message).toContain('Manche 1 conclusa: patta');
+    expect(state.message).toContain('devono scegliere una lunetta iniziale');
     expect(state.turn).toBe('hunters');
   });
 
@@ -227,7 +227,7 @@ describe('createGame', () => {
     expect(state.message).toContain('Risultato finale: parità');
   });
 
-  it('in hvc con computer cacciatori seleziona automaticamente una lunetta', () => {
+  it('in hvc con IA cacciatori seleziona automaticamente una lunetta', () => {
     vi.useFakeTimers();
     const game = createGame();
     game.newMatch('hvc', 'hunters', 'easy');
@@ -242,7 +242,7 @@ describe('createGame', () => {
     vi.useRealTimers();
   });
 
-  it('in setup cacciatori con computer ignora click umano prima del timer', () => {
+  it('in setup cacciatori con IA ignora click umano prima del timer', () => {
     vi.useFakeTimers();
     const game = createGame();
     game.newMatch('hvc', 'hunters', 'easy');
@@ -273,7 +273,7 @@ describe('createGame', () => {
     vi.useRealTimers();
   });
 
-  it('in hvc con computer orso esegue setup e prima mossa dopo la scelta lunetta', () => {
+  it('in hvc con IA orso esegue setup e prima mossa dopo la scelta lunetta', () => {
     vi.useFakeTimers();
     const game = createGame();
     game.newMatch('hvc', 'bear', 'easy');
@@ -330,7 +330,7 @@ describe('createGame', () => {
     expect(onChange).toHaveBeenCalledTimes(2);
   });
 
-  it('in hvc medium con computer cacciatori usa la logica minimax su setup e mossa', () => {
+  it('in hvc medium con IA cacciatori usa la logica minimax su setup e mossa', () => {
     vi.useFakeTimers();
     const game = createGame();
     game.newMatch('hvc', 'hunters', 'medium');
@@ -340,7 +340,7 @@ describe('createGame', () => {
     expect(game.getState().phase).toBe('setup-bear');
     expect(game.getState().hunters.length).toBe(3);
 
-    // setup orso umano, poi mossa orso umana per innescare risposta cacciatori computer
+    // setup orso umano, poi mossa orso umana per innescare risposta cacciatori IA
     game.clickNode(18);
     expect(game.getState().turn).toBe('bear');
     game.clickNode(16);
@@ -354,7 +354,7 @@ describe('createGame', () => {
     vi.useRealTimers();
   });
 
-  it('in hvc hard con computer orso usa setup e mossa avanzata', () => {
+  it('in hvc hard con IA orso usa setup e mossa avanzata', () => {
     vi.useFakeTimers();
     const game = createGame();
     game.newMatch('hvc', 'bear', 'hard');

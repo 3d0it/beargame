@@ -199,8 +199,6 @@ describe('main.js', () => {
     expect(renderMock).toHaveBeenCalled();
     expect(elements.startScreen.classList.contains('is-hidden')).toBe(true);
     expect(elements.gameScreen.classList.contains('is-hidden')).toBe(false);
-    expect(elements.board.style.width).toBeTruthy();
-    expect(elements.board.style.height).toBeTruthy();
   });
 
   it('usa configurazione aggiornata per nuova partita (hvc + hunters)', async () => {
@@ -312,7 +310,7 @@ describe('main.js', () => {
       round: 2,
       turn: 'bear',
       bearMoves: 12,
-      message: 'Turno dell Orso'
+      message: 'Turno dell Orso: seleziona una casella adiacente libera.'
     };
 
     onChange();
@@ -321,7 +319,7 @@ describe('main.js', () => {
     expect(elements.roundLabel.textContent).toBe('Manche: 2/2');
     expect(elements.turnLabel.textContent).toBe("Turno: Orso");
     expect(elements.movesLabel.textContent).toBe('Mosse Orso: 12/40');
-    expect(elements.messageLabel.textContent).toBe('Turno dell Orso');
+    expect(elements.messageLabel.textContent).toBe('Turno dell Orso: seleziona una casella adiacente libera.');
     expect(elements.roundOneResult.textContent).toContain('in attesa');
     expect(elements.matchResultLabel.textContent).toContain('in attesa');
   });
@@ -351,7 +349,7 @@ describe('main.js', () => {
     expect(warnSpy.mock.calls[0][1]).toBe(swError);
   });
 
-  it('in hvc mostra Umano/Computer nel risultato finale', async () => {
+  it('in hvc mostra Umano/IA nel risultato finale', async () => {
     const state = {
       current: {
         mode: 'hvc',
@@ -390,7 +388,7 @@ describe('main.js', () => {
     onChange();
 
     expect(elements.matchResultLabel.textContent).toContain('vince Umano');
-    expect(elements.messageLabel.textContent).toContain('vince Umano');
+    expect(elements.messageLabel.textContent).toContain('Partita conclusa');
   });
 
   it('nel riepilogo finale distingue quando anche il perdente immobilizza l orso', async () => {
@@ -432,7 +430,7 @@ describe('main.js', () => {
     onChange();
 
     expect(elements.matchResultLabel.textContent).toContain('vince Umano');
-    expect(elements.matchResultLabel.textContent).toContain('Computer ci è riuscito in 34 mosse');
+    expect(elements.matchResultLabel.textContent).toContain('IA ci è riuscito in 34 mosse');
     expect(elements.matchResultLabel.textContent).not.toContain('non ci è riuscito entro 40');
   });
 
@@ -526,7 +524,7 @@ describe('main.js', () => {
     expect(elements.resultBanner.textContent).toContain('parità');
     expect(elements.resultBanner.classList.contains('tie')).toBe(true);
     expect(elements.turnLabel.textContent).toBe('Turno: -');
-    expect(elements.messageLabel.textContent).toContain('Risultato finale: parità');
+    expect(elements.messageLabel.textContent).toContain('Partita conclusa');
   });
 
   it('torna al menu con pulsante Cambia modalità', async () => {
@@ -586,7 +584,7 @@ describe('main.js', () => {
     expect(gameMock.setOnChange).toHaveBeenCalledTimes(1);
   });
 
-  it('non supera la larghezza utile del pannello board (anti overflow orizzontale)', async () => {
+  it('non applica resize inline del board (sizing gestito da CSS)', async () => {
     const state = {
       current: {
         round: 1,
@@ -601,22 +599,10 @@ describe('main.js', () => {
       state
     });
 
-    const boardPanel = elements.board._closest;
-    boardPanel.clientWidth = 0;
-    boardPanel.getBoundingClientRect = () => ({ top: 120, width: 320 });
-
-    window.getComputedStyle = vi.fn(() => ({
-      paddingLeft: '14',
-      paddingRight: '14',
-      borderLeftWidth: '1',
-      borderRightWidth: '1'
-    }));
-
     elements.startMatchBtn.dispatch('click');
 
-    const boardWidth = Number.parseInt(elements.board.style.width, 10);
-    expect(Number.isFinite(boardWidth)).toBe(true);
-    expect(boardWidth).toBeLessThanOrEqual(290);
+    expect(elements.board.style.width).toBeUndefined();
+    expect(elements.board.style.height).toBeUndefined();
   });
 
   it('non fallisce quando navigator non esiste', async () => {

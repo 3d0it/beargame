@@ -41,6 +41,8 @@ const HUNTER_LUNETTES = [
   [10, 11, 12]
 ];
 const GAME_DIFFICULTIES = new Set(['easy', 'medium', 'hard']);
+const HUNTERS_SETUP_HINT = 'I Cacciatori devono scegliere una lunetta iniziale.';
+const BEAR_TURN_HINT = "Turno dell'Orso: seleziona una casella adiacente libera.";
 const HUNTERS_TURN_HINT = 'Turno dei Cacciatori: seleziona un cacciatore, poi una casella adiacente libera.';
 const HUNTER_SELECTED_HINT = 'Cacciatore selezionato: scegli una casella adiacente libera.';
 const HUNTER_INVALID_MOVE_HINT = 'Mossa non valida: scegli una casella adiacente libera.';
@@ -142,7 +144,7 @@ function emptyState() {
     selectedHunter: null,
     bearMoves: 0,
     phase: 'setup-hunters',
-    message: 'I Cacciatori devono scegliere una lunetta iniziale.'
+    message: HUNTERS_SETUP_HINT
   };
 }
 
@@ -224,10 +226,10 @@ export function createGame() {
       return;
     }
 
-    startNextRound(roundResult);
+    startNextRound();
   }
 
-  function startNextRound(previousRoundResult) {
+  function startNextRound() {
     state.round += 1;
     state.hunters = [];
     state.bear = null;
@@ -235,17 +237,7 @@ export function createGame() {
     state.selectedHunter = null;
     state.bearMoves = 0;
     state.phase = 'setup-hunters';
-    state.message =
-      `${describeRoundResult(previousRoundResult)} Inizia la manche ${state.round}: ruoli invertiti rispetto alla manche precedente. ` +
-      'I Cacciatori scelgono una lunetta iniziale.';
-  }
-
-  function describeRoundResult(roundResult) {
-    if (!roundResult) return '';
-    if (roundResult.reason === 'hunters-win') {
-      return `Manche ${roundResult.round} conclusa: i Cacciatori vincono, Orso bloccato in ${roundResult.immobilizationMoves} mosse.`;
-    }
-    return `Manche ${roundResult.round} conclusa: patta, Orso non immobilizzato entro 40 mosse.`;
+    state.message = HUNTERS_SETUP_HINT;
   }
 
   function applyBearMove(to) {
@@ -283,7 +275,7 @@ export function createGame() {
     }
 
     state.turn = 'bear';
-    state.message = "Turno dell'Orso.";
+    state.message = BEAR_TURN_HINT;
     return true;
   }
 
@@ -684,7 +676,7 @@ export function createGame() {
       state.bear = chosen;
       state.phase = 'playing';
       state.turn = 'bear';
-      state.message = "Turno dell'Orso.";
+      state.message = BEAR_TURN_HINT;
       emitChange();
       scheduleComputerTurn(() => {
         computerBearMove();
@@ -728,7 +720,7 @@ export function createGame() {
       state.bear = nodeId;
       state.phase = 'playing';
       state.turn = 'bear';
-      state.message = "Turno dell'Orso.";
+      state.message = BEAR_TURN_HINT;
       emitChange();
       maybeComputerTurn();
       return;
