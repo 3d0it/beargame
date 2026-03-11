@@ -136,7 +136,8 @@ jobs:
             android/app/build/outputs/bundle/release/app-release.aab \
             "$KEY_ALIAS"
 
-          jarsigner -verify -verbose -certs android/app/build/outputs/bundle/release/app-release.aab
+          # Upload keys for Google Play are commonly self-signed; verify integrity/signature without chain noise.
+          jarsigner -verify -verbose android/app/build/outputs/bundle/release/app-release.aab
 
       - name: Auth to Google Cloud (WIF)
         id: auth
