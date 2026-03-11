@@ -41,6 +41,9 @@ const HUNTER_LUNETTES = [
   [10, 11, 12]
 ];
 const GAME_DIFFICULTIES = new Set(['easy', 'medium', 'hard']);
+const HUNTERS_TURN_HINT = 'Turno dei Cacciatori: seleziona un cacciatore, poi una casella adiacente libera.';
+const HUNTER_SELECTED_HINT = 'Cacciatore selezionato: scegli una casella adiacente libera.';
+const HUNTER_INVALID_MOVE_HINT = 'Mossa non valida: scegli una casella adiacente libera.';
 const DIFFICULTY_CONFIG = {
   easy: { bearDepth: 1, hunterDepth: 1, setupDepth: 1 },
   medium: { bearDepth: 4, hunterDepth: 3, setupDepth: 3 },
@@ -232,7 +235,9 @@ export function createGame() {
     state.selectedHunter = null;
     state.bearMoves = 0;
     state.phase = 'setup-hunters';
-    state.message = `${describeRoundResult(previousRoundResult)} Inizia la manche ${state.round}: i Cacciatori scelgono una lunetta iniziale.`;
+    state.message =
+      `${describeRoundResult(previousRoundResult)} Inizia la manche ${state.round}: ruoli invertiti rispetto alla manche precedente. ` +
+      'I Cacciatori scelgono una lunetta iniziale.';
   }
 
   function describeRoundResult(roundResult) {
@@ -258,7 +263,7 @@ export function createGame() {
       return true;
     }
     state.turn = 'hunters';
-    state.message = 'Turno dei Cacciatori.';
+    state.message = HUNTERS_TURN_HINT;
     return true;
   }
 
@@ -742,14 +747,23 @@ export function createGame() {
       const hunterIndex = state.hunters.indexOf(nodeId);
       if (hunterIndex !== -1) {
         state.selectedHunter = hunterIndex;
+        state.message = HUNTER_SELECTED_HINT;
         emitChange();
         return;
       }
       if (state.selectedHunter !== null) {
         const moved = applyHunterMove(state.selectedHunter, nodeId);
-        if (moved) emitChange();
-        maybeComputerTurn();
+        if (moved) {
+          emitChange();
+          maybeComputerTurn();
+          return;
+        }
+        state.message = HUNTER_INVALID_MOVE_HINT;
+        emitChange();
+        return;
       }
+      state.message = HUNTERS_TURN_HINT;
+      emitChange();
     }
   }
 

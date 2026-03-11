@@ -3,6 +3,13 @@ import { createBoardRenderer } from './board-renderer.js';
 
 registerServiceWorker();
 const SETTINGS_STORAGE_KEY = 'beargame.settings.v1';
+const FIRST_MATCH_TUTORIAL_KEY = 'beargame.first-match-tutorial.v1';
+const FIRST_MATCH_TUTORIAL_STEPS = [
+  "Scopo: i Cacciatori vincono se bloccano l'Orso; l'Orso fa patta se resta libero per 40 mosse.",
+  'Setup Cacciatori: all inizio scegli una lunetta, cioè una delle 4 terne di posizioni iniziali. Sul tavoliere le lunette valide sono evidenziate.',
+  "Mossa Orso: tocca una casella adiacente libera. Mossa Cacciatori: tocca un cacciatore, poi una casella adiacente libera.",
+  'La partita è in 2 manche: nella seconda i ruoli si invertono automaticamente.'
+];
 
 const game = createGame();
 const board = requiredElement('board');
@@ -18,6 +25,7 @@ const difficultyEasyBtn = requiredElement('difficultyEasyBtn');
 const difficultyMediumBtn = requiredElement('difficultyMediumBtn');
 const difficultyHardBtn = requiredElement('difficultyHardBtn');
 const startMatchBtn = requiredElement('startMatchBtn');
+const reviewTutorialBtn = optionalElement('reviewTutorialBtn');
 const backToMenuBtn = requiredElement('backToMenuBtn');
 const newMatchBtn = requiredElement('newMatchBtn');
 const gameModeLabel = requiredElement('gameModeLabel');
@@ -53,6 +61,10 @@ function requiredElement(id) {
   const element = document.getElementById(id);
   if (!element) throw new Error(`Missing required DOM element: #${id}`);
   return element;
+}
+
+function optionalElement(id) {
+  return document.getElementById(id);
 }
 
 function isStorageAvailable() {
@@ -101,6 +113,96 @@ function saveSettings() {
   } catch {
     // Ignore quota/security errors and keep running with in-memory settings.
   }
+}
+
+function hasSeenFirstMatchTutorial() {
+  if (!isStorageAvailable()) return false;
+  try {
+    return window.localStorage.getItem(FIRST_MATCH_TUTORIAL_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function markFirstMatchTutorialSeen() {
+  if (!isStorageAvailable()) return;
+  try {
+    window.localStorage.setItem(FIRST_MATCH_TUTORIAL_KEY, '1');
+  } catch {
+    // Ignore quota/security errors and keep running.
+  }
+}
+
+function canRenderTutorialPopup() {
+  return (
+    typeof document !== 'undefined' &&
+    typeof document.createElement === 'function' &&
+    Boolean(document.body) &&
+    typeof document.body.appendChild === 'function'
+  );
+}
+
+function showFirstMatchTutorialPopup() {
+  if (!canRenderTutorialPopup()) return;
+
+  const overlay = document.createElement('section');
+  overlay.className = 'tutorial-popup';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-label', 'Guida rapida partita');
+
+  const card = document.createElement('div');
+  card.className = 'tutorial-popup-card';
+
+  const title = document.createElement('h3');
+  title.textContent = 'Guida rapida';
+
+  const body = document.createElement('p');
+  body.className = 'tutorial-popup-text';
+
+  const actions = document.createElement('div');
+  actions.className = 'tutorial-popup-actions';
+
+  const skipBtn = document.createElement('button');
+  skipBtn.type = 'button';
+  skipBtn.className = 'tutorial-popup-btn';
+  skipBtn.textContent = 'Chiudi';
+
+  const nextBtn = document.createElement('button');
+  nextBtn.type = 'button';
+  nextBtn.className = 'tutorial-popup-btn tutorial-popup-btn--primary';
+
+  let stepIndex = 0;
+  const syncStep = () => {
+    body.textContent = FIRST_MATCH_TUTORIAL_STEPS[stepIndex];
+    nextBtn.textContent = stepIndex >= FIRST_MATCH_TUTORIAL_STEPS.length - 1 ? 'Ho capito' : 'Avanti';
+  };
+
+  const closePopup = () => {
+    overlay.remove();
+  };
+
+  skipBtn.addEventListener('click', closePopup);
+  nextBtn.addEventListener('click', () => {
+    if (stepIndex >= FIRST_MATCH_TUTORIAL_STEPS.length - 1) {
+      closePopup();
+      return;
+    }
+    stepIndex += 1;
+    syncStep();
+  });
+
+  actions.append(skipBtn, nextBtn);
+  card.append(title, body, actions);
+  overlay.append(card);
+  document.body.appendChild(overlay);
+  syncStep();
+}
+
+function maybeShowFirstMatchTutorialPopup() {
+  if (hasSeenFirstMatchTutorial()) return;
+  markFirstMatchTutorialSeen();
+  showFirstMatchTutorialPopup();
 }
 
 function setActiveButton(activeBtn, buttons) {
@@ -316,6 +418,7 @@ function startMatch() {
   saveSettings();
   showGameScreen();
   refreshGameUI();
+  maybeShowFirstMatchTutorialPopup();
 }
 
 modeHvHBtn.addEventListener('click', () => {
@@ -361,6 +464,7 @@ difficultyHardBtn.addEventListener('click', () => {
 });
 
 startMatchBtn.addEventListener('click', startMatch);
+reviewTutorialBtn?.addEventListener('click', showFirstMatchTutorialPopup);
 
 newMatchBtn.addEventListener('click', () => {
   game.newMatch(selectedMode, selectedComputerSide, selectedDifficulty);

@@ -177,6 +177,22 @@ describe('createGame', () => {
     expect(state.selectedHunter).toBe(0);
     expect(state.hunters).toEqual([1, 2, 3]);
     expect(state.turn).toBe('hunters');
+    expect(state.message).toContain('Mossa non valida');
+  });
+
+  it('mostra una guida esplicita se i cacciatori cliccano una destinazione senza selezione', () => {
+    const game = createGame();
+    game.newMatch('hvh', 'bear', 'easy');
+    game.clickNode(1);
+    game.clickNode(18);
+    game.clickNode(16);
+
+    game.clickNode(14);
+
+    const state = game.getState();
+    expect(state.selectedHunter).toBeNull();
+    expect(state.turn).toBe('hunters');
+    expect(state.message).toContain('seleziona un cacciatore');
   });
 
   it('chiude il primo round in patta dopo 40 mosse orso e passa al round 2', () => {

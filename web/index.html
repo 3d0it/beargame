@@ -26,11 +26,11 @@
           <div class="mode-grid">
             <button id="modeHvHBtn" class="mode-btn is-active" type="button" data-mode="hvh">
               <span class="mode-title">2 Giocatori</span>
-              <span class="mode-copy">Entrambi umani, passaggio turno locale.</span>
+              <span class="mode-copy">Entrambi umani, 2 manche con ruoli invertiti.</span>
             </button>
             <button id="modeHvCBtn" class="mode-btn" type="button" data-mode="hvc">
               <span class="mode-title">Contro PC</span>
-              <span class="mode-copy">Sfida l'algoritmo in due manche alternate.</span>
+              <span class="mode-copy">Scegli chi controlla il PC nella manche 1, poi ruoli invertiti nella 2.</span>
             </button>
           </div>
 
@@ -57,9 +57,10 @@
 
       <section id="gameScreen" class="screen is-hidden">
         <header class="game-header">
-          <div>
+          <div class="game-title-block">
             <p class="eyebrow">Partita in corso</p>
             <h2 id="gameModeLabel"></h2>
+            <button id="reviewTutorialBtn" class="review-tutorial-btn" type="button">Rivedi tutorial</button>
           </div>
           <div class="actions">
             <button id="backToMenuBtn" type="button">Cambia modalità</button>
