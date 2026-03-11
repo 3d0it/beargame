@@ -10,7 +10,9 @@ on:
         type: choice
         options:
           - internal
+          - alpha
           - beta
+          - production
       release_status:
         description: "Release status"
         required: true
@@ -19,6 +21,18 @@ on:
         options:
           - draft
           - completed
+          - inProgress
+      rollout_fraction:
+        description: "Rollout fraction (used only when release_status=inProgress)"
+        required: true
+        default: "0.1"
+        type: choice
+        options:
+          - "0.05"
+          - "0.1"
+          - "0.2"
+          - "0.5"
+          - "1.0"
       ui_profile:
         description: "UI viewport test profile before publish"
         required: true
@@ -59,6 +73,7 @@ jobs:
   publish:
     needs: ui_guard
     runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.track == 'production' && 'production' || 'playstore' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -132,6 +147,7 @@ jobs:
           create_credentials_file: true
 
       - name: Upload to Google Play (${{ github.event.inputs.track || 'internal' }})
+        if: ${{ github.event.inputs.release_status != 'inProgress' }}
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJson: ${{ steps.auth.outputs.credentials_file_path }}
@@ -139,3 +155,14 @@ jobs:
           releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
           track: ${{ github.event.inputs.track || 'internal' }}
           status: ${{ github.event.inputs.release_status || 'completed' }}
+
+      - name: Upload to Google Play staged rollout (${{ github.event.inputs.track || 'internal' }})
+        if: ${{ github.event.inputs.release_status == 'inProgress' }}
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJson: ${{ steps.auth.outputs.credentials_file_path }}
+          packageName: com.beargame.app
+          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+          track: ${{ github.event.inputs.track || 'internal' }}
+          status: inProgress
+          userFraction: ${{ github.event.inputs.rollout_fraction || '0.1' }}
