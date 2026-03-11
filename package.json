@@ -10,6 +10,7 @@
   "scripts": {
     "build": "echo 'Build static web: no-op'",
     "serve": "node ./scripts/serve-web.mjs",
+    "assets:playstore": "node ./scripts/generate-playstore-assets.mjs",
     "assets:android": "npx @capacitor/assets generate --android --assetPath assets",
     "cap:sync": "npx cap sync android",
     "test": "vitest run",

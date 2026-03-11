@@ -3,3 +3,4 @@ android/
 coverage/
 .DS_Store
 npm-debug.log*
+assets/playstore/
