@@ -77,7 +77,7 @@ describe('ui integration', () => {
 
     // Setup cacciatori: clic lunetta destra [7,8,9], nodo 8
     getNodeHit('78', '50').dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    expect(document.getElementById('messageLabel').textContent).toContain("L'Orso sceglie");
+    expect(document.getElementById('messageLabel').textContent).toContain('Orso: scegli');
 
     // Setup orso: nodo 18 (centro)
     getNodeHit('50', '50').dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -86,7 +86,7 @@ describe('ui integration', () => {
     // Prima mossa orso: 18 -> 16
     getNodeHit('50', '35').dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(document.getElementById('turnLabel').textContent).toContain('Cacciatori');
-    expect(document.getElementById('movesLabel').textContent).toContain('1/40');
+    expect(document.getElementById('movesLabel').textContent).toContain('Mosse 1/40');
     expect(document.querySelectorAll('#board .piece-bear').length).toBe(1);
     expect(document.querySelectorAll('#board .piece-hunter').length).toBe(3);
   });

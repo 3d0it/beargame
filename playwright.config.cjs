@@ -1,12 +1,14 @@
 const { defineConfig } = require('@playwright/test');
 
 const smokeViewports = [
+  { name: 'mobile-s25u-480x1040', width: 480, height: 1040 },
   { name: 'mobile-390x844', width: 390, height: 844 },
   { name: 'mobile-412x915', width: 412, height: 915 }
 ];
 
 const fullViewports = [
   { name: 'mobile-360x800', width: 360, height: 800 },
+  { name: 'mobile-s25u-480x1040', width: 480, height: 1040 },
   { name: 'mobile-390x844', width: 390, height: 844 },
   { name: 'mobile-412x915', width: 412, height: 915 },
   { name: 'tablet-768x1024', width: 768, height: 1024 },

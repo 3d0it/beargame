@@ -316,12 +316,12 @@ describe('main.js', () => {
     onChange();
 
     expect(renderMock).toHaveBeenCalledTimes(1);
-    expect(elements.roundLabel.textContent).toBe('Manche: 2/2');
-    expect(elements.turnLabel.textContent).toBe("Turno: Orso");
-    expect(elements.movesLabel.textContent).toBe('Mosse Orso: 12/40');
-    expect(elements.messageLabel.textContent).toBe('Turno dell Orso: seleziona una casella adiacente libera.');
+    expect(elements.roundLabel.textContent).toBe('Manche 2/2');
+    expect(elements.turnLabel.textContent).toBe('Orso');
+    expect(elements.movesLabel.textContent).toBe('Mosse 12/40');
+    expect(elements.messageLabel.textContent).toBe('Orso: scegli una casella adiacente libera.');
     expect(elements.roundOneResult.textContent).toContain('in attesa');
-    expect(elements.matchResultLabel.textContent).toContain('in attesa');
+    expect(elements.matchResultLabel.textContent).toContain('Finale: in attesa');
   });
 
   it('logga warning se la registrazione service worker fallisce', async () => {
@@ -387,7 +387,7 @@ describe('main.js', () => {
     const onChange = gameMock.setOnChange.mock.calls[0][0];
     onChange();
 
-    expect(elements.matchResultLabel.textContent).toContain('vince Umano');
+    expect(elements.matchResultLabel.textContent).toContain('Finale: Vince Umano');
     expect(elements.messageLabel.textContent).toContain('Partita conclusa');
   });
 
@@ -429,9 +429,8 @@ describe('main.js', () => {
     const onChange = gameMock.setOnChange.mock.calls[0][0];
     onChange();
 
-    expect(elements.matchResultLabel.textContent).toContain('vince Umano');
-    expect(elements.matchResultLabel.textContent).toContain('IA ci è riuscito in 34 mosse');
-    expect(elements.matchResultLabel.textContent).not.toContain('non ci è riuscito entro 40');
+    expect(elements.matchResultLabel.textContent).toContain('Finale: Vince Umano (23), IA 34');
+    expect(elements.matchResultLabel.textContent).not.toContain('>40');
   });
 
   it('evita copy incoerente con mosse mancanti nel round del perdente', async () => {
@@ -472,8 +471,7 @@ describe('main.js', () => {
     const onChange = gameMock.setOnChange.mock.calls[0][0];
     onChange();
 
-    expect(elements.matchResultLabel.textContent).toContain('vince Umano');
-    expect(elements.matchResultLabel.textContent).toContain('mosse non disponibili');
+    expect(elements.matchResultLabel.textContent).toContain('Finale: Vince Umano (23), IA n/d');
     expect(elements.matchResultLabel.textContent).not.toContain('null mosse');
   });
 
@@ -523,7 +521,7 @@ describe('main.js', () => {
 
     expect(elements.resultBanner.textContent).toContain('parità');
     expect(elements.resultBanner.classList.contains('tie')).toBe(true);
-    expect(elements.turnLabel.textContent).toBe('Turno: -');
+    expect(elements.turnLabel.textContent).toBe('-');
     expect(elements.messageLabel.textContent).toContain('Partita conclusa');
   });
 

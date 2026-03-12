@@ -260,19 +260,17 @@ function showStartScreen() {
 function updateStatus() {
   const state = game.getState();
   gameModeLabel.textContent = humanModeLabel(state);
-  roundLabel.textContent = `Manche: ${state.round}/2`;
-  turnLabel.textContent = state.turn
-    ? `Turno: ${state.turn === 'bear' ? 'Orso' : 'Cacciatori'}`
-    : 'Turno: -';
-  movesLabel.textContent = `Mosse Orso: ${state.bearMoves}/${MAX_BEAR_MOVES}`;
-  messageLabel.textContent = primaryMessage(state);
+  roundLabel.textContent = `Manche ${state.round}/2`;
+  turnLabel.textContent = state.turn ? (state.turn === 'bear' ? 'Orso' : 'Cacciatori') : '-';
+  movesLabel.textContent = `Mosse ${state.bearMoves}/${MAX_BEAR_MOVES}`;
+  messageLabel.textContent = compactStatusMessage(state);
 
   const roundResults = state.roundResults ?? [];
   const firstRound = roundResults[0] ?? null;
   const secondRound = roundResults[1] ?? null;
-  roundOneResult.textContent = describeRoundResult(firstRound, 1, state);
-  roundTwoResult.textContent = describeRoundResult(secondRound, 2, state);
-  matchResultLabel.textContent = describeMatchResult(state);
+  setTextAndTitle(roundOneResult, describeRoundResult(firstRound, 1, state));
+  setTextAndTitle(roundTwoResult, describeRoundResult(secondRound, 2, state));
+  setTextAndTitle(matchResultLabel, describeMatchResult(state));
   applyResultBanner(state);
 }
 
@@ -306,16 +304,16 @@ function describeRoundResult(roundResult, fallbackRoundNumber, state) {
   const bear = playerLabel(roundResult.bearPlayer, state);
   if (roundResult.reason === 'hunters-win') {
     if (!hasValidImmobilizationMoves(roundResult.immobilizationMoves)) {
-      return `Manche ${roundResult.round}: vincono i Cacciatori (${hunters}), Orso (${bear}) bloccato (mosse non disponibili).`;
+      return `Manche ${roundResult.round}: Vincono Cacciatori (${hunters}).`;
     }
-    return `Manche ${roundResult.round}: vincono i Cacciatori (${hunters}), Orso (${bear}) bloccato in ${roundResult.immobilizationMoves} mosse.`;
+    return `Manche ${roundResult.round}: Vincono Cacciatori (${hunters}) in ${roundResult.immobilizationMoves} mosse.`;
   }
-  return `Manche ${roundResult.round}: patta, Orso (${bear}) non immobilizzato entro ${MAX_BEAR_MOVES} mosse.`;
+  return `Manche ${roundResult.round}: Patta, Orso (${bear}) a ${MAX_BEAR_MOVES} mosse.`;
 }
 
 function describeMatchResult(state) {
-  if (!state.matchSummary) return 'Risultato finale: in attesa della seconda manche';
-  if (state.matchSummary.isTie) return 'Risultato finale: parità';
+  if (!state.matchSummary) return 'Finale: in attesa';
+  if (state.matchSummary.isTie) return 'Finale: parità';
   const winner = playerLabel(state.matchSummary.winnerPlayer, state);
   const loserPlayer = state.matchSummary.winnerPlayer === 'player-1' ? 'player-2' : 'player-1';
   const loser = playerLabel(loserPlayer, state);
@@ -329,22 +327,45 @@ function describeMatchResult(state) {
   );
 
   if (!winnerRound || !hasValidImmobilizationMoves(winnerRound.immobilizationMoves)) {
-    return `Risultato finale: vince ${winner}`;
+    return `Finale: Vince ${winner}`;
   }
   if (loserRound) {
     if (!hasValidImmobilizationMoves(loserRound.immobilizationMoves)) {
-      return `Risultato finale: vince ${winner}. Ha immobilizzato l'Orso in ${winnerRound.immobilizationMoves} mosse; ${loser} ha immobilizzato l'Orso (mosse non disponibili).`;
+      return `Finale: Vince ${winner} (${winnerRound.immobilizationMoves}), ${loser} n/d`;
     }
-    return `Risultato finale: vince ${winner}. Ha immobilizzato l'Orso in ${winnerRound.immobilizationMoves} mosse; ${loser} ci è riuscito in ${loserRound.immobilizationMoves} mosse.`;
+    return `Finale: Vince ${winner} (${winnerRound.immobilizationMoves}), ${loser} ${loserRound.immobilizationMoves}`;
   }
-  return `Risultato finale: vince ${winner}. Ha immobilizzato l'Orso in ${winnerRound.immobilizationMoves} mosse; ${loser} non ci è riuscito entro ${MAX_BEAR_MOVES}.`;
+  return `Finale: Vince ${winner} (${winnerRound.immobilizationMoves}), ${loser} >${MAX_BEAR_MOVES}`;
 }
 
-function primaryMessage(state) {
+function compactStatusMessage(state) {
   if (state.phase === 'match-over' || state.phase === 'tie-after-two-rounds') {
     return FINAL_STATUS_HINT;
   }
+  if (typeof state.message === 'string') {
+    if (state.message.includes("Turno dell'Orso") || state.message.includes('Turno dell Orso')) {
+      return 'Orso: scegli una casella adiacente libera.';
+    }
+    if (state.message.includes('devi prima selezionare un cacciatore')) {
+      return 'Seleziona prima un cacciatore.';
+    }
+  }
+  if (state.phase === 'setup-hunters') return 'Cacciatori: scegli una lunetta.';
+  if (state.phase === 'setup-bear') return 'Orso: scegli la posizione iniziale.';
+  if (state.phase === 'playing' && state.turn === 'bear') {
+    return 'Orso: scegli una casella adiacente libera.';
+  }
+  if (state.phase === 'playing' && state.turn === 'hunters') {
+    if (state.selectedHunter !== null) return 'Cacciatore selezionato: scegli una casella libera.';
+    if (state.message?.includes('Mossa non valida')) return 'Mossa non valida: scegli una casella libera.';
+    return 'Cacciatori: seleziona pedina e destinazione adiacente.';
+  }
   return state.message;
+}
+
+function setTextAndTitle(element, text) {
+  element.textContent = text;
+  element.title = text;
 }
 
 function applyResultBanner(state) {

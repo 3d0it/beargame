@@ -483,6 +483,15 @@ h2 {
   display: flex;
   justify-content: center;
   align-items: center;
+  overflow: visible;
+  clip-path: none;
+  border-radius: 16px;
+}
+
+.board-panel::before,
+.board-panel::after {
+  clip-path: none;
+  border-radius: inherit;
 }
 
 .status-panel p {
@@ -493,12 +502,41 @@ h2 {
   line-height: var(--status-copy-line-height);
 }
 
-.status-message {
+.status-panel {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem 0.5rem;
+  align-items: start;
+}
+
+.status-item {
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-ui);
   font-weight: 700;
-  line-height: 1.3;
-  min-height: calc(var(--status-message-min-lines) * 1.3em);
+  font-size: 0.9rem;
+  line-height: 1.15;
+  padding: 0.22rem 0.35rem 0.26rem;
+  border: 1px solid rgba(112, 84, 53, 0.32);
+  border-radius: 8px;
+  background: rgba(248, 238, 214, 0.55);
+}
+
+.status-message {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.24;
+  min-height: 2.7em;
+  max-height: 2.7em;
   color: #463728;
   font-family: var(--font-ui);
+  font-size: 0.96rem;
+  padding-bottom: 0.08em;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .review-tutorial-btn {
@@ -564,6 +602,9 @@ h2 {
   margin: var(--result-copy-margin) 0;
   font-size: var(--status-copy-size);
   line-height: var(--status-copy-line-height);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .result-final {
@@ -578,8 +619,8 @@ h2 {
   height: auto;
   aspect-ratio: 1 / 1;
   margin: 0 auto;
+  overflow: visible;
   border-radius: 14px 9px 12px 8px / 10px 16px 8px 13px;
-  clip-path: var(--rough-cut);
   background:
     radial-gradient(circle at 28% 18%, rgba(255, 246, 228, 0.52), transparent 38%),
     radial-gradient(circle at 76% 74%, rgba(137, 98, 54, 0.12), transparent 38%),
@@ -602,6 +643,9 @@ h2 {
 .edge {
   stroke: var(--line);
   stroke-width: 1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
   fill: none;
   filter: drop-shadow(0 0 2px var(--edge-glow));
 }
@@ -612,10 +656,16 @@ h2 {
   filter: drop-shadow(0 0 3px rgba(108, 125, 73, 0.45));
 }
 
+#board[data-setup="hunters"] .edge-lunette-guide {
+  stroke: #6b8458;
+  stroke-width: 1.45;
+  filter: drop-shadow(0 0 2px rgba(108, 125, 73, 0.35));
+}
+
 .lunette-guide-node {
-  fill: rgba(108, 125, 73, 0.2);
-  stroke: rgba(89, 107, 57, 0.85);
-  stroke-width: 0.5;
+  fill: rgba(108, 125, 73, 0.14);
+  stroke: rgba(98, 116, 68, 0.72);
+  stroke-width: 0.45;
   pointer-events: none;
 }
 
@@ -784,7 +834,6 @@ h2 {
   :root {
     --app-pad: 1.5rem;
     --screen-gap: 1.2rem;
-    --status-p-margin: 0;
   }
 
   .game-header {
@@ -793,13 +842,8 @@ h2 {
   }
 
   .status-panel {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.55rem 0.7rem;
+    gap: 0.5rem 0.6rem;
     align-items: start;
-  }
-  .status-message {
-    grid-column: 1 / -1;
   }
 }
 

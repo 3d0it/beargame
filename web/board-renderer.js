@@ -1,7 +1,7 @@
 import { BOARD_NODES } from './game.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
-const REQUIRED_LUNETTE_NODE_IDS = [1, 3, 4, 6, 7, 9, 10, 12];
+const REQUIRED_LUNETTE_NODE_IDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 const LUNETTE_GROUPS = [
   [1, 2, 3],
   [4, 5, 6],
@@ -17,9 +17,18 @@ export function createBoardRenderer({ board, game, onAfterNodeClick }) {
 
   function render() {
     const state = game.getState();
-    board.innerHTML = '';
+    clearBoard(board);
 
     const isHuntersSetup = state.phase === 'setup-hunters';
+    if (isHuntersSetup) {
+      if (typeof board.setAttribute === 'function') {
+        board.setAttribute('data-setup', 'hunters');
+      }
+    } else {
+      if (typeof board.removeAttribute === 'function') {
+        board.removeAttribute('data-setup');
+      }
+    }
     drawBoardLines(board, lunetteResolution, isHuntersSetup);
     if (isHuntersSetup) {
       drawLunetteGuides(board, nodeMap);
@@ -76,13 +85,17 @@ function resolveLunetteNodes(nodeMap) {
   return {
     nodes: {
       n1: resolved[0],
-      n3: resolved[1],
-      n4: resolved[2],
-      n6: resolved[3],
-      n7: resolved[4],
-      n9: resolved[5],
-      n10: resolved[6],
-      n12: resolved[7]
+      n2: resolved[1],
+      n3: resolved[2],
+      n4: resolved[3],
+      n5: resolved[4],
+      n6: resolved[5],
+      n7: resolved[6],
+      n8: resolved[7],
+      n9: resolved[8],
+      n10: resolved[9],
+      n11: resolved[10],
+      n12: resolved[11]
     },
     missingIds: []
   };
@@ -100,10 +113,10 @@ function drawBoardLines(board, lunetteResolution, isHuntersSetup = false) {
   }
 
   const lunetteNodes = lunetteResolution.nodes;
-  board.appendChild(arcPath(lunetteNodes.n1.x, lunetteNodes.n1.y, lunetteNodes.n3.x, lunetteNodes.n3.y, 0, 30, isHuntersSetup));
-  board.appendChild(arcPath(lunetteNodes.n10.x, lunetteNodes.n10.y, lunetteNodes.n12.x, lunetteNodes.n12.y, 1, 30, isHuntersSetup));
-  board.appendChild(arcPath(lunetteNodes.n4.x, lunetteNodes.n4.y, lunetteNodes.n6.x, lunetteNodes.n6.y, 1, 30, isHuntersSetup));
-  board.appendChild(arcPath(lunetteNodes.n7.x, lunetteNodes.n7.y, lunetteNodes.n9.x, lunetteNodes.n9.y, 0, 30, isHuntersSetup));
+  board.appendChild(curvePathThrough(lunetteNodes.n1, lunetteNodes.n2, lunetteNodes.n3, isHuntersSetup));
+  board.appendChild(curvePathThrough(lunetteNodes.n10, lunetteNodes.n11, lunetteNodes.n12, isHuntersSetup));
+  board.appendChild(curvePathThrough(lunetteNodes.n4, lunetteNodes.n5, lunetteNodes.n6, isHuntersSetup));
+  board.appendChild(curvePathThrough(lunetteNodes.n7, lunetteNodes.n8, lunetteNodes.n9, isHuntersSetup));
 }
 
 function drawLunetteGuides(board, nodeMap) {
@@ -138,29 +151,39 @@ function validateBoardRendererInput(board, game) {
   }
 }
 
-function line(x1, y1, x2, y2) {
+function clearBoard(board) {
+  if (typeof board.replaceChildren === 'function') {
+    board.replaceChildren();
+    return;
+  }
+  board.innerHTML = '';
+}
+
+function line(x1, y1, x2, y2, cls = 'edge') {
   const l = document.createElementNS(SVG_NS, 'line');
   l.setAttribute('x1', String(x1));
   l.setAttribute('y1', String(y1));
   l.setAttribute('x2', String(x2));
   l.setAttribute('y2', String(y2));
-  l.setAttribute('class', 'edge');
+  l.setAttribute('class', cls);
   return l;
 }
 
-function ellipse(cx, cy, rx, ry) {
+function ellipse(cx, cy, rx, ry, cls = 'edge') {
   const e = document.createElementNS(SVG_NS, 'ellipse');
   e.setAttribute('cx', String(cx));
   e.setAttribute('cy', String(cy));
   e.setAttribute('rx', String(rx));
   e.setAttribute('ry', String(ry));
-  e.setAttribute('class', 'edge');
+  e.setAttribute('class', cls);
   return e;
 }
 
-function arcPath(x1, y1, x2, y2, sweepFlag, radius = 30, highlight = false) {
+function curvePathThrough(start, midpoint, end, highlight = false) {
+  const controlX = 2 * midpoint.x - (start.x + end.x) / 2;
+  const controlY = 2 * midpoint.y - (start.y + end.y) / 2;
   const path = document.createElementNS(SVG_NS, 'path');
-  path.setAttribute('d', `M ${x1} ${y1} A ${radius} ${radius} 0 0 ${sweepFlag} ${x2} ${y2}`);
+  path.setAttribute('d', `M ${start.x} ${start.y} Q ${controlX} ${controlY} ${end.x} ${end.y}`);
   path.setAttribute('class', highlight ? 'edge edge-lunette-guide' : 'edge');
   return path;
 }
