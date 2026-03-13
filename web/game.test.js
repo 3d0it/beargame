@@ -156,7 +156,7 @@ describe('createGame', () => {
   it('in setup automatico l IA orso sceglie sempre una partenza con almeno una mossa legale', () => {
     vi.useFakeTimers();
     const game = createGame();
-    game.newMatch('hvc', 'bear', 'master');
+    game.newMatch('hvc', 'bear', 'easy');
     game.clickNode(1);
 
     vi.runOnlyPendingTimers();
@@ -485,7 +485,7 @@ describe('createGame', () => {
   it('in hvc hard con IA orso usa setup e mossa avanzata', () => {
     vi.useFakeTimers();
     const game = createGame();
-    game.newMatch('hvc', 'bear', 'hard');
+    game.newMatch('hvc', 'bear', 'medium');
     game.clickNode(1);
 
     vi.runOnlyPendingTimers();
