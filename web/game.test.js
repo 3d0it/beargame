@@ -49,6 +49,28 @@ describe('controllerFor', () => {
 });
 
 describe('createGame', () => {
+  function movedHunterIndex(before, after) {
+    for (let i = 0; i < before.hunters.length; i += 1) {
+      if (before.hunters[i] !== after.hunters[i]) return i;
+    }
+    return null;
+  }
+
+  function pickBearMove(state, preferred, game) {
+    const legalMoves = game.adjacency.get(state.bear).filter((to) => !state.hunters.includes(to));
+    if (legalMoves.includes(preferred)) return preferred;
+    return legalMoves[0] ?? null;
+  }
+
+  function movedHunterStep(before, after) {
+    for (let i = 0; i < before.hunters.length; i += 1) {
+      if (before.hunters[i] !== after.hunters[i]) {
+        return { hunterIndex: i, from: before.hunters[i], to: after.hunters[i] };
+      }
+    }
+    return null;
+  }
+
   it('inizializza una nuova partita con setup corretto', () => {
     const game = createGame();
     game.newMatch('hvh', 'bear', 'easy');
@@ -63,8 +85,8 @@ describe('createGame', () => {
 
   it('salva la difficolta selezionata e usa easy come fallback', () => {
     const game = createGame();
-    game.newMatch('hvc', 'bear', 'hard');
-    expect(game.getState().difficulty).toBe('hard');
+    game.newMatch('hvc', 'bear', 'master');
+    expect(game.getState().difficulty).toBe('master');
 
     game.newMatch('hvc', 'bear', 'impossible');
     expect(game.getState().difficulty).toBe('easy');
@@ -116,6 +138,34 @@ describe('createGame', () => {
     game.clickNode(18);
     expect(game.getState().bear).toBe(18);
     expect(game.getState().phase).toBe('playing');
+  });
+
+  it('non permette all orso di partire su una posizione senza mosse legali', () => {
+    const game = createGame();
+    game.newMatch('hvh', 'bear', 'easy');
+    game.clickNode(1);
+
+    game.clickNode(0);
+
+    const state = game.getState();
+    expect(state.bear).toBeNull();
+    expect(state.phase).toBe('setup-bear');
+    expect(state.message).toContain('Posizione iniziale non valida');
+  });
+
+  it('in setup automatico l IA orso sceglie sempre una partenza con almeno una mossa legale', () => {
+    vi.useFakeTimers();
+    const game = createGame();
+    game.newMatch('hvc', 'bear', 'master');
+    game.clickNode(1);
+
+    vi.runOnlyPendingTimers();
+    const state = game.getState();
+    expect(state.phase).toBe('playing');
+    expect(state.bear).not.toBeNull();
+    expect(game.adjacency.get(state.bear).some((to) => !state.hunters.includes(to))).toBe(true);
+
+    vi.useRealTimers();
   });
 
   it('applica una mossa valida dell orso e una dei cacciatori', () => {
@@ -319,10 +369,10 @@ describe('createGame', () => {
     const onChange = vi.fn();
     game.setOnChange(onChange);
 
-    game.setConfig('hvc', 'hunters', 'hard');
+    game.setConfig('hvc', 'hunters', 'master');
     expect(game.getState().mode).toBe('hvc');
     expect(game.getState().computerSide).toBe('hunters');
-    expect(game.getState().difficulty).toBe('hard');
+    expect(game.getState().difficulty).toBe('master');
     expect(onChange).toHaveBeenCalledTimes(1);
 
     game.setConfig('hvc', 'bear', 'unknown');
@@ -354,6 +404,84 @@ describe('createGame', () => {
     vi.useRealTimers();
   });
 
+  it('in hvc medium i cacciatori non restano bloccati a muovere sempre lo stesso pezzo in loop corto', () => {
+    vi.useFakeTimers();
+    const game = createGame();
+    game.newMatch('hvc', 'hunters', 'medium');
+
+    vi.runOnlyPendingTimers();
+    game.clickNode(18);
+
+    const movedHunters = [];
+    const preferredPath = [16, 18, 16, 18, 16, 18];
+
+    for (const preferred of preferredPath) {
+      const beforeBearMove = game.getState();
+      if (beforeBearMove.phase !== 'playing' || beforeBearMove.turn !== 'bear') break;
+
+      const target = pickBearMove(beforeBearMove, preferred, game);
+      if (target === null) break;
+
+      game.clickNode(target);
+      const beforeReply = game.getState();
+      if (beforeReply.phase !== 'playing') break;
+      expect(beforeReply.turn).toBe('hunters');
+
+      vi.runOnlyPendingTimers();
+      const afterReply = game.getState();
+      if (afterReply.phase !== 'playing') break;
+      movedHunters.push(movedHunterIndex(beforeReply, afterReply));
+      expect(afterReply.turn).toBe('bear');
+    }
+
+    expect(movedHunters.length).toBeGreaterThan(1);
+    expect(new Set(movedHunters).size).toBeGreaterThan(1);
+    vi.useRealTimers();
+  });
+
+  it('in hvc medium i cacciatori evitano di annullare subito la propria ultima mossa se hanno alternative', () => {
+    vi.useFakeTimers();
+    const game = createGame();
+    game.newMatch('hvc', 'hunters', 'medium');
+
+    vi.runOnlyPendingTimers();
+    game.clickNode(18);
+
+    let previousHunterMove = null;
+    const preferredPath = [16, 18, 16, 18, 16, 18];
+
+    for (const preferred of preferredPath) {
+      const beforeBearMove = game.getState();
+      if (beforeBearMove.phase !== 'playing' || beforeBearMove.turn !== 'bear') break;
+
+      const target = pickBearMove(beforeBearMove, preferred, game);
+      if (target === null) break;
+
+      game.clickNode(target);
+      const beforeReply = game.getState();
+      if (beforeReply.phase !== 'playing' || beforeReply.turn !== 'hunters') break;
+
+      vi.runOnlyPendingTimers();
+      const afterReply = game.getState();
+      if (afterReply.phase !== 'playing') break;
+
+      const currentHunterMove = movedHunterStep(beforeReply, afterReply);
+      expect(currentHunterMove).not.toBeNull();
+
+      if (previousHunterMove) {
+        const isImmediateUndo =
+          currentHunterMove.hunterIndex === previousHunterMove.hunterIndex &&
+          currentHunterMove.from === previousHunterMove.to &&
+          currentHunterMove.to === previousHunterMove.from;
+        expect(isImmediateUndo).toBe(false);
+      }
+
+      previousHunterMove = currentHunterMove;
+    }
+
+    vi.useRealTimers();
+  });
+
   it('in hvc hard con IA orso usa setup e mossa avanzata', () => {
     vi.useFakeTimers();
     const game = createGame();
@@ -368,6 +496,11 @@ describe('createGame', () => {
     expect(state.bearMoves).toBe(1);
 
     vi.useRealTimers();
+  });
+
+  it('espone anche la difficolta master', () => {
+    const game = createGame();
+    expect(game.difficulties).toEqual(['easy', 'medium', 'hard', 'master']);
   });
 });
 

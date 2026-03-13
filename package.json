@@ -18,7 +18,9 @@
     "test:e2e:smoke": "PW_VIEWPORT_PROFILE=smoke playwright test",
     "test:e2e:full": "PW_VIEWPORT_PROFILE=full playwright test",
     "test:ui": "vitest run web/ui.integration.test.js",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "eval:ai": "node ./scripts/evaluate-ai.mjs",
+    "eval:ai:top": "node ./scripts/evaluate-ai.mjs --difficulties=hard,master --opponents=greedy --matches=6"
   },
   "devDependencies": {
     "@capacitor/android": "^8.1.0",

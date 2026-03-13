@@ -15,6 +15,7 @@ function mountAppDom() {
           <button id="difficultyEasyBtn" class="side-btn is-active" type="button"></button>
           <button id="difficultyMediumBtn" class="side-btn" type="button"></button>
           <button id="difficultyHardBtn" class="side-btn" type="button"></button>
+          <button id="difficultyMasterBtn" class="side-btn" type="button"></button>
         </div>
         <button id="startMatchBtn" type="button"></button>
       </section>

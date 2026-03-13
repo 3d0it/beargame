@@ -74,6 +74,7 @@ const REQUIRED_IDS = [
   'difficultyEasyBtn',
   'difficultyMediumBtn',
   'difficultyHardBtn',
+  'difficultyMasterBtn',
   'startMatchBtn',
   'backToMenuBtn',
   'newMatchBtn',
@@ -241,10 +242,10 @@ describe('main.js', () => {
 
     elements.modeHvCBtn.dispatch('click');
     expect(elements.difficultyPanel.classList.contains('is-hidden')).toBe(false);
-    elements.difficultyHardBtn.dispatch('click');
+    elements.difficultyMasterBtn.dispatch('click');
     elements.startMatchBtn.dispatch('click');
 
-    expect(gameMock.newMatch).toHaveBeenCalledWith('hvc', 'bear', 'hard');
+    expect(gameMock.newMatch).toHaveBeenCalledWith('hvc', 'bear', 'master');
   });
 
   it('carica impostazioni persistite valide da localStorage', async () => {
@@ -260,13 +261,13 @@ describe('main.js', () => {
     const { elements } = await importMainWithMocks({
       registerMock: vi.fn(() => Promise.resolve()),
       state,
-      storedSettingsRaw: JSON.stringify({ mode: 'hvc', computerSide: 'hunters', difficulty: 'hard' })
+      storedSettingsRaw: JSON.stringify({ mode: 'hvc', computerSide: 'hunters', difficulty: 'master' })
     });
 
     expect(elements.computerSidePanel.classList.contains('is-hidden')).toBe(false);
     expect(elements.difficultyPanel.classList.contains('is-hidden')).toBe(false);
     expect(elements.computerHuntersBtn.classList.contains('is-active')).toBe(true);
-    expect(elements.difficultyHardBtn.classList.contains('is-active')).toBe(true);
+    expect(elements.difficultyMasterBtn.classList.contains('is-active')).toBe(true);
   });
 
   it('usa fallback safe se localStorage contiene JSON corrotto', async () => {

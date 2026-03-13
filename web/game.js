@@ -40,16 +40,17 @@ const HUNTER_LUNETTES = [
   [7, 8, 9],
   [10, 11, 12]
 ];
-const GAME_DIFFICULTIES = new Set(['easy', 'medium', 'hard']);
+const GAME_DIFFICULTIES = new Set(['easy', 'medium', 'hard', 'master']);
 const HUNTERS_SETUP_HINT = 'I Cacciatori devono scegliere una lunetta iniziale.';
 const BEAR_TURN_HINT = "Turno dell'Orso: seleziona una casella adiacente libera.";
 const HUNTERS_TURN_HINT = 'Turno dei Cacciatori: seleziona un cacciatore, poi una casella adiacente libera.';
 const HUNTER_SELECTED_HINT = 'Cacciatore selezionato: scegli una casella adiacente libera.';
 const HUNTER_INVALID_MOVE_HINT = 'Mossa non valida: scegli una casella adiacente libera.';
 const DIFFICULTY_CONFIG = {
-  easy: { bearDepth: 1, hunterDepth: 1, setupDepth: 1 },
-  medium: { bearDepth: 4, hunterDepth: 3, setupDepth: 3 },
-  hard: { bearDepth: 6, hunterDepth: 5, setupDepth: 4 }
+  easy: { bearDepth: 1, hunterDepth: 1, setupDepth: 1, targetRating: 3 },
+  medium: { bearDepth: 4, hunterDepth: 3, setupDepth: 3, targetRating: 5 },
+  hard: { bearDepth: 8, hunterDepth: 5, setupDepth: 5, targetRating: 8 },
+  master: { bearDepth: 11, hunterDepth: 9, setupDepth: 7, targetRating: 9.5 }
 };
 
 const lunetteByNode = new Map();
@@ -153,6 +154,8 @@ export function createGame() {
   let onChange = null;
   let matchEpoch = 0;
   let pendingComputerTurn = false;
+  let recentPositionHashes = [];
+  let recentMoves = [];
 
   function emitChange() {
     onChange?.();
@@ -164,6 +167,64 @@ export function createGame() {
 
   function isCurrentEpoch(epoch) {
     return epoch === matchEpoch;
+  }
+
+  function positionHash(local = state) {
+    const hunters = [...local.hunters].sort((a, b) => a - b).join(',');
+    return `${local.phase}|${local.turn}|${local.bear}|${hunters}`;
+  }
+
+  function resetRecentPositions() {
+    recentPositionHashes = [];
+  }
+
+  function resetRecentMoves() {
+    recentMoves = [];
+  }
+
+  function rememberPosition(local = state) {
+    recentPositionHashes.push(positionHash(local));
+    if (recentPositionHashes.length > 12) {
+      recentPositionHashes = recentPositionHashes.slice(-12);
+    }
+  }
+
+  function rememberMove(side, from, to) {
+    recentMoves.push({ side, from, to });
+    if (recentMoves.length > 12) {
+      recentMoves = recentMoves.slice(-12);
+    }
+  }
+
+  function repetitionPenalty(local) {
+    const nextHash = positionHash(local);
+    let penalty = 0;
+
+    for (let i = recentPositionHashes.length - 1; i >= 0; i -= 1) {
+      if (recentPositionHashes[i] !== nextHash) continue;
+      const recency = recentPositionHashes.length - i;
+      penalty += Math.max(0, 42 - recency * 6);
+    }
+
+    return penalty;
+  }
+
+  function moveBacktrackPenalty(side, move) {
+    if (!move || typeof move.to !== 'number') return 0;
+    const from = side === 'bear' ? state.bear : move.from;
+    if (typeof from !== 'number') return 0;
+
+    let penalty = 0;
+    for (let i = recentMoves.length - 1; i >= 0; i -= 1) {
+      const previous = recentMoves[i];
+      if (previous.side !== side) continue;
+      if (previous.from !== move.to || previous.to !== from) continue;
+      const recency = recentMoves.length - i;
+      penalty += Math.max(0, 56 - recency * 10);
+      break;
+    }
+
+    return penalty;
   }
 
   function resolveDifficulty(nextDifficulty = 'easy') {
@@ -238,10 +299,13 @@ export function createGame() {
     state.bearMoves = 0;
     state.phase = 'setup-hunters';
     state.message = HUNTERS_SETUP_HINT;
+    resetRecentPositions();
+    resetRecentMoves();
   }
 
   function applyBearMove(to) {
     if (!canMove(state.bear, to)) return false;
+    const from = state.bear;
     state.bear = to;
     state.bearMoves += 1;
     if (isBearTrapped()) {
@@ -256,6 +320,8 @@ export function createGame() {
     }
     state.turn = 'hunters';
     state.message = HUNTERS_TURN_HINT;
+    rememberMove('bear', from, to);
+    rememberPosition();
     return true;
   }
 
@@ -276,6 +342,8 @@ export function createGame() {
 
     state.turn = 'bear';
     state.message = BEAR_TURN_HINT;
+    rememberMove('hunters', from, to);
+    rememberPosition();
     return true;
   }
 
@@ -297,6 +365,15 @@ export function createGame() {
 
   function getDifficultyConfig() {
     return DIFFICULTY_CONFIG[state.difficulty] ?? DIFFICULTY_CONFIG.easy;
+  }
+
+  function getValidBearStartPositions(local = state) {
+    const freeNodes = BOARD_NODES.map((node) => node.id).filter((nodeId) => !isOccupied(nodeId, local));
+    return freeNodes.filter((nodeId) => {
+      const simulated = cloneState(local);
+      simulated.bear = nodeId;
+      return getBearLegalMoves(simulated).length > 0;
+    });
   }
 
   function nodeDistance(a, b) {
@@ -325,6 +402,46 @@ export function createGame() {
     }
 
     return visited.size;
+  }
+
+  function hunterPressureProfile(local) {
+    let trapReplies = 0;
+    let squeezeReplies = 0;
+
+    for (const move of getHunterLegalMoves(local)) {
+      const afterHunter = applyVirtualMove(local, 'hunters', move);
+      const mobilityAfter = getBearLegalMoves(afterHunter).length;
+      if (mobilityAfter === 0) {
+        trapReplies += 1;
+      } else if (mobilityAfter === 1) {
+        squeezeReplies += 1;
+      }
+    }
+
+    return { trapReplies, squeezeReplies };
+  }
+
+  function bearEscapeProfile(local) {
+    let safeRoutes = 0;
+    let trapRoutes = 0;
+    let squeezeRoutes = 0;
+    let frontierReach = 0;
+
+    for (const to of getBearLegalMoves(local)) {
+      const afterBear = applyVirtualMove(local, 'bear', { to });
+      frontierReach += reachableCount(afterBear, to, 4);
+      const { trapReplies, squeezeReplies } = hunterPressureProfile(afterBear);
+
+      if (trapReplies > 0) {
+        trapRoutes += 1;
+      } else if (squeezeReplies > 0) {
+        squeezeRoutes += 1;
+      } else {
+        safeRoutes += 1;
+      }
+    }
+
+    return { safeRoutes, trapRoutes, squeezeRoutes, frontierReach };
   }
 
   function evaluateState(local, perspective = 'bear') {
@@ -362,6 +479,9 @@ export function createGame() {
     const safeAdjacents = getBearLegalMoves(local).filter(
       (to) => !local.hunters.some((hunter) => adjacency.get(to)?.includes(hunter))
     ).length;
+    const { trapReplies, squeezeReplies } = hunterPressureProfile(local);
+    const { safeRoutes, trapRoutes, squeezeRoutes, frontierReach } = bearEscapeProfile(local);
+    const mobilityDanger = mobility <= 1 ? 180 : mobility === 2 ? 80 : 0;
 
     // Higher score favors bear freedom; hunters maximize the inverse.
     const bearScore =
@@ -369,8 +489,15 @@ export function createGame() {
       twoStepMobility * 16 +
       reachable3 * 10 +
       safeAdjacents * 14 +
+      safeRoutes * 42 +
+      frontierReach * 5 +
       distanceSum * 0.7 -
       pressure * 140 -
+      trapReplies * 90 -
+      squeezeReplies * 26 -
+      trapRoutes * 120 -
+      squeezeRoutes * 55 -
+      mobilityDanger -
       centerDistance * 0.5 -
       hunterAdjacency * 32;
     return perspective === 'bear' ? bearScore : -bearScore;
@@ -398,8 +525,12 @@ export function createGame() {
   function orderedMoves(local, sideToMove, perspective, maximizing) {
     const moves = legalMovesFor(sideToMove, local);
     return moves.sort((a, b) => {
-      const scoreA = evaluateState(applyVirtualMove(local, sideToMove, a), perspective);
-      const scoreB = evaluateState(applyVirtualMove(local, sideToMove, b), perspective);
+      const stateA = applyVirtualMove(local, sideToMove, a);
+      const stateB = applyVirtualMove(local, sideToMove, b);
+      const scoreA =
+        evaluateState(stateA, perspective) - repetitionPenalty(stateA) - moveBacktrackPenalty(sideToMove, a);
+      const scoreB =
+        evaluateState(stateB, perspective) - repetitionPenalty(stateB) - moveBacktrackPenalty(sideToMove, b);
       return maximizing ? scoreB - scoreA : scoreA - scoreB;
     });
   }
@@ -500,13 +631,22 @@ export function createGame() {
     }
 
     const depth = getDifficultyConfig().bearDepth;
+    const effectiveDepth =
+      state.difficulty === 'hard' || state.difficulty === 'master'
+        ? depth +
+          (moves.length <= 2 ? 2 : hunterPressureProfile(state).trapReplies > 0 ? 1 : 0) +
+          (state.difficulty === 'master' ? (moves.length <= 3 ? 2 : 1) : 0)
+        : depth;
     let bestMove = moves[0];
     let bestScore = -Infinity;
     const transposition = new Map();
 
     for (const to of moves) {
       const simulated = applyVirtualMove(state, 'bear', { to });
-      const score = minimax(simulated, depth - 1, 'hunters', 'bear', -Infinity, Infinity, transposition);
+      const score =
+        minimax(simulated, effectiveDepth - 1, 'hunters', 'bear', -Infinity, Infinity, transposition) -
+        repetitionPenalty(simulated) -
+        moveBacktrackPenalty('bear', { to });
       if (score > bestScore) {
         bestScore = score;
         bestMove = to;
@@ -538,13 +678,21 @@ export function createGame() {
     }
 
     const depth = getDifficultyConfig().hunterDepth;
+    const bearProfile = bearEscapeProfile(state);
+    const effectiveDepth =
+      state.difficulty === 'master'
+        ? depth + (bearProfile.safeRoutes <= 1 ? 2 : bearProfile.safeRoutes <= 2 ? 1 : 0)
+        : depth;
     let best = moves[0];
     let bestScore = -Infinity;
     const transposition = new Map();
 
     for (const move of moves) {
       const simulated = applyVirtualMove(state, 'hunters', move);
-      const score = minimax(simulated, depth - 1, 'bear', 'hunters', -Infinity, Infinity, transposition);
+      const score =
+        minimax(simulated, effectiveDepth - 1, 'bear', 'hunters', -Infinity, Infinity, transposition) -
+        repetitionPenalty(simulated) -
+        moveBacktrackPenalty('hunters', move);
       if (score > bestScore) {
         bestScore = score;
         best = move;
@@ -569,9 +717,17 @@ export function createGame() {
   function chooseHuntersLunette(lunette) {
     state.hunters = [...lunette];
     state.selectedHunter = null;
+    const validBearStarts = getValidBearStartPositions();
+    if (validBearStarts.length === 0) {
+      state.message = 'Orso bloccato in 0 mosse.';
+      finishRound('hunters-win');
+      return;
+    }
+
     state.phase = 'setup-bear';
     state.turn = 'bear';
     state.message = "L'Orso sceglie una posizione iniziale.";
+    rememberPosition();
   }
 
   function scoreLunette(lunette) {
@@ -613,7 +769,7 @@ export function createGame() {
   }
 
   function chooseBearStartPosition() {
-    const free = BOARD_NODES.map((n) => n.id).filter((id) => !isOccupied(id));
+    const free = getValidBearStartPositions();
     if (free.length === 0) return null;
     let best = free[0];
     let bestScore = -Infinity;
@@ -664,12 +820,8 @@ export function createGame() {
     if (state.phase === 'setup-bear' && currentControllerFor('bear') === 'computer') {
       const chosen = chooseBearStartPosition();
       if (chosen === null) {
-        state.hunters = [];
-        state.bear = null;
-        state.selectedHunter = null;
-        state.phase = 'setup-hunters';
-        state.turn = 'hunters';
-        state.message = 'Stato non valido rilevato. I Cacciatori devono scegliere di nuovo una lunetta.';
+        state.message = 'Orso bloccato in 0 mosse.';
+        finishRound('hunters-win');
         emitChange();
         return;
       }
@@ -677,6 +829,7 @@ export function createGame() {
       state.phase = 'playing';
       state.turn = 'bear';
       state.message = BEAR_TURN_HINT;
+      rememberPosition();
       emitChange();
       scheduleComputerTurn(() => {
         computerBearMove();
@@ -717,10 +870,16 @@ export function createGame() {
     if (state.phase === 'setup-bear') {
       if (currentControllerFor('bear') === 'computer') return;
       if (isOccupied(nodeId)) return;
+      if (!getValidBearStartPositions().includes(nodeId)) {
+        state.message = "Posizione iniziale non valida: l'Orso deve avere almeno una mossa disponibile.";
+        emitChange();
+        return;
+      }
       state.bear = nodeId;
       state.phase = 'playing';
       state.turn = 'bear';
       state.message = BEAR_TURN_HINT;
+      rememberPosition();
       emitChange();
       maybeComputerTurn();
       return;
@@ -769,6 +928,8 @@ export function createGame() {
   function newMatch(mode, computerSide, difficulty = 'easy') {
     matchEpoch += 1;
     pendingComputerTurn = false;
+    resetRecentPositions();
+    resetRecentMoves();
     state = emptyState();
     state.mode = mode;
     state.computerSide = computerSide;
@@ -800,6 +961,6 @@ export function createGame() {
     hunterLunettes: HUNTER_LUNETTES,
     edges: EDGE_LIST,
     adjacency,
-    difficulties: ['easy', 'medium', 'hard']
+    difficulties: ['easy', 'medium', 'hard', 'master']
   };
 }
