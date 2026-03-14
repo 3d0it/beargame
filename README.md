@@ -41,8 +41,10 @@ Workflow: `.github/workflows/ci.yml`
 Comandi utili:
 ```bash
 npm test
+npm run build
 npm run test:ui
 npm run test:coverage
+npm run test:e2e:smoke
 npm run benchmark:ai:medium-hard
 ```
 
@@ -66,6 +68,7 @@ Workflow: `.github/workflows/publish-playstore.yml`
 
 ## Note architetturali
 - UI e logica di gioco in `web/`.
+- `npm run build` copia la web app statica in `dist/`, usata sia per GitHub Pages sia per Capacitor/Android.
 - Capacitor incapsula la stessa web app per Android, senza duplicare la logica.
 
 ## Artwork

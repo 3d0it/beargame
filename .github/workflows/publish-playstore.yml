@@ -92,6 +92,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build web app
+        run: npm run build
+
       - name: Ensure Android project exists
         run: |
           if [ ! -d android ]; then

@@ -2,13 +2,14 @@
   "name": "beargame",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "license": "MIT",
   "engines": {
     "node": ">=22.0.0"
   },
   "description": "Simulatore web + android del Gioco dell'Orso",
   "scripts": {
-    "build": "echo 'Build static web: no-op'",
+    "build": "node ./scripts/build-web.mjs",
     "serve": "node ./scripts/serve-web.mjs",
     "assets:playstore": "node ./scripts/generate-playstore-assets.mjs",
     "assets:android": "npx @capacitor/assets generate --android --assetPath assets",

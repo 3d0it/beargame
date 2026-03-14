@@ -1,6 +1,7 @@
 node_modules/
 android/
 coverage/
+dist/
 .DS_Store
 npm-debug.log*
 assets/playstore/
