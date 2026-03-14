@@ -25,7 +25,6 @@ const difficultyPanel = requiredElement('difficultyPanel');
 const difficultyEasyBtn = requiredElement('difficultyEasyBtn');
 const difficultyMediumBtn = requiredElement('difficultyMediumBtn');
 const difficultyHardBtn = requiredElement('difficultyHardBtn');
-const difficultyMasterBtn = requiredElement('difficultyMasterBtn');
 const startMatchBtn = requiredElement('startMatchBtn');
 const reviewTutorialBtn = optionalElement('reviewTutorialBtn');
 const backToMenuBtn = requiredElement('backToMenuBtn');
@@ -84,7 +83,6 @@ function normalizeComputerSide(side) {
 function normalizeDifficulty(difficulty) {
   if (difficulty === 'medium') return 'medium';
   if (difficulty === 'hard') return 'hard';
-  if (difficulty === 'master') return 'master';
   return 'easy';
 }
 
@@ -228,10 +226,8 @@ function updateModeUI() {
       ? difficultyEasyBtn
       : selectedDifficulty === 'medium'
         ? difficultyMediumBtn
-        : selectedDifficulty === 'hard'
-          ? difficultyHardBtn
-          : difficultyMasterBtn,
-    [difficultyEasyBtn, difficultyMediumBtn, difficultyHardBtn, difficultyMasterBtn]
+        : difficultyHardBtn,
+    [difficultyEasyBtn, difficultyMediumBtn, difficultyHardBtn]
   );
 }
 
@@ -248,7 +244,6 @@ function humanModeLabel(state) {
 function difficultyLabel(difficulty) {
   if (difficulty === 'medium') return 'Medio';
   if (difficulty === 'hard') return 'Difficile';
-  if (difficulty === 'master') return 'Maestro';
   return 'Facile';
 }
 
@@ -446,12 +441,6 @@ difficultyMediumBtn.addEventListener('click', () => {
 
 difficultyHardBtn.addEventListener('click', () => {
   selectedDifficulty = 'hard';
-  saveSettings();
-  updateModeUI();
-});
-
-difficultyMasterBtn.addEventListener('click', () => {
-  selectedDifficulty = 'master';
   saveSettings();
   updateModeUI();
 });

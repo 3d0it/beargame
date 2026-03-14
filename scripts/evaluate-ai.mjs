@@ -4,17 +4,14 @@ const BASE_SCENARIOS = [
   { difficulty: 'easy', opponent: 'random', matches: 16 },
   { difficulty: 'medium', opponent: 'random', matches: 16 },
   { difficulty: 'hard', opponent: 'random', matches: 16 },
-  { difficulty: 'master', opponent: 'random', matches: 8 },
   { difficulty: 'easy', opponent: 'greedy', matches: 16 },
   { difficulty: 'medium', opponent: 'greedy', matches: 16 },
-  { difficulty: 'hard', opponent: 'greedy', matches: 16 },
-  { difficulty: 'master', opponent: 'greedy', matches: 8 }
+  { difficulty: 'hard', opponent: 'greedy', matches: 16 }
 ];
 const TARGET_RATINGS = {
   easy: 3,
   medium: 5,
-  hard: 8,
-  master: 9.5
+  hard: 8
 };
 const VALID_DIFFICULTIES = new Set(Object.keys(TARGET_RATINGS));
 const VALID_OPPONENTS = new Set(['random', 'greedy']);

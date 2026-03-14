@@ -40,17 +40,16 @@ const HUNTER_LUNETTES = [
   [7, 8, 9],
   [10, 11, 12]
 ];
-const GAME_DIFFICULTIES = new Set(['easy', 'medium', 'hard', 'master']);
+const GAME_DIFFICULTIES = new Set(['easy', 'medium', 'hard']);
 const HUNTERS_SETUP_HINT = 'I Cacciatori devono scegliere una lunetta iniziale.';
 const BEAR_TURN_HINT = "Turno dell'Orso: seleziona una casella adiacente libera.";
 const HUNTERS_TURN_HINT = 'Turno dei Cacciatori: seleziona un cacciatore, poi una casella adiacente libera.';
 const HUNTER_SELECTED_HINT = 'Cacciatore selezionato: scegli una casella adiacente libera.';
 const HUNTER_INVALID_MOVE_HINT = 'Mossa non valida: scegli una casella adiacente libera.';
 const DIFFICULTY_CONFIG = {
-  easy: { bearDepth: 1, hunterDepth: 1, setupDepth: 1, targetRating: 3 },
-  medium: { bearDepth: 4, hunterDepth: 3, setupDepth: 3, targetRating: 5 },
-  hard: { bearDepth: 8, hunterDepth: 5, setupDepth: 5, targetRating: 8 },
-  master: { bearDepth: 11, hunterDepth: 9, setupDepth: 7, targetRating: 9.5 }
+  easy: { bearDepth: 1, hunterDepth: 1, setupDepth: 1, quiescenceDepth: 0, rolloutDepth: 0, rolloutWeight: 0, targetRating: 3 },
+  medium: { bearDepth: 2, hunterDepth: 2, setupDepth: 1, quiescenceDepth: 0, rolloutDepth: 0, rolloutWeight: 0, targetRating: 5 },
+  hard: { bearDepth: 8, hunterDepth: 5, setupDepth: 5, quiescenceDepth: 2, rolloutDepth: 5, rolloutWeight: 0.6, targetRating: 8 }
 };
 
 const lunetteByNode = new Map();
@@ -444,6 +443,112 @@ export function createGame() {
     return { safeRoutes, trapRoutes, squeezeRoutes, frontierReach };
   }
 
+  function immediateTrapCount(local) {
+    let traps = 0;
+    for (const move of getHunterLegalMoves(local)) {
+      const afterHunter = applyVirtualMove(local, 'hunters', move);
+      if (getBearLegalMoves(afterHunter).length === 0) traps += 1;
+    }
+    return traps;
+  }
+
+  function tacticalMoveScore(local, sideToMove, move) {
+    const next = applyVirtualMove(local, sideToMove, move);
+    const mobility = getBearLegalMoves(next).length;
+    const reachable4 = reachableCount(next, next.bear, 4);
+    const { trapReplies, squeezeReplies } = hunterPressureProfile(next);
+    const { safeRoutes, trapRoutes, squeezeRoutes, frontierReach } = bearEscapeProfile(next);
+    const immediateTraps = immediateTrapCount(next);
+
+    if (sideToMove === 'bear') {
+      return (
+        safeRoutes * 420 +
+        frontierReach * 22 +
+        reachable4 * 14 +
+        mobility * 160 -
+        trapReplies * 1500 -
+        immediateTraps * 1700 -
+        squeezeReplies * 340 -
+        trapRoutes * 620 -
+        squeezeRoutes * 210
+      );
+    }
+
+    return (
+      immediateTraps * 1800 +
+      trapRoutes * 520 +
+      squeezeRoutes * 180 -
+      safeRoutes * 360 -
+      reachable4 * 24 -
+      mobility * 240 -
+      trapReplies * 60
+    );
+  }
+
+  function isTacticalState(local) {
+    const mobility = getBearLegalMoves(local).length;
+    if (mobility <= 2) return true;
+    const { trapReplies, squeezeReplies } = hunterPressureProfile(local);
+    if (trapReplies > 0 || squeezeReplies > 0) return true;
+    const { trapRoutes, squeezeRoutes } = bearEscapeProfile(local);
+    return trapRoutes > 0 || squeezeRoutes > 0;
+  }
+
+  function greedyRolloutScore(local, perspective, pliesRemaining) {
+    let current = cloneState(local);
+    let sideToMove = current.turn ?? perspective;
+
+    for (let ply = 0; ply < pliesRemaining; ply += 1) {
+      if (current.bear === null || current.bearMoves >= MAX_BEAR_MOVES || getBearLegalMoves(current).length === 0) {
+        break;
+      }
+
+      const moves = legalMovesFor(sideToMove, current);
+      if (moves.length === 0) break;
+
+      const maximizing = sideToMove === perspective;
+      let chosenMove = moves[0];
+      let chosenScore = maximizing ? -Infinity : Infinity;
+
+      for (const move of moves) {
+        const next = applyVirtualMove(current, sideToMove, move);
+        const score = evaluateState(next, perspective) + tacticalMoveScore(current, sideToMove, move);
+        if (maximizing ? score > chosenScore : score < chosenScore) {
+          chosenScore = score;
+          chosenMove = move;
+        }
+      }
+
+      current = applyVirtualMove(current, sideToMove, chosenMove);
+      sideToMove = sideToMove === 'bear' ? 'hunters' : 'bear';
+    }
+
+    return evaluateState(current, perspective);
+  }
+
+  function selectTacticalMoveWithRollout(local, sideToMove, perspective, moves, rolloutDepth) {
+    if (rolloutDepth <= 0 || moves.length === 0) return null;
+    if (!isTacticalState(local)) return null;
+
+    let bestMove = null;
+    let bestScore = -Infinity;
+
+    for (const move of moves) {
+      const simulated = applyVirtualMove(local, sideToMove, move);
+      const score =
+        greedyRolloutScore(simulated, perspective, rolloutDepth) +
+        tacticalMoveScore(local, sideToMove, move) -
+        repetitionPenalty(simulated) -
+        moveBacktrackPenalty(sideToMove, move);
+      if (score > bestScore) {
+        bestScore = score;
+        bestMove = move;
+      }
+    }
+
+    return bestMove;
+  }
+
   function evaluateState(local, perspective = 'bear') {
     const mobility = getBearLegalMoves(local).length;
     const trapped = local.bear !== null && mobility === 0;
@@ -528,26 +633,40 @@ export function createGame() {
       const stateA = applyVirtualMove(local, sideToMove, a);
       const stateB = applyVirtualMove(local, sideToMove, b);
       const scoreA =
-        evaluateState(stateA, perspective) - repetitionPenalty(stateA) - moveBacktrackPenalty(sideToMove, a);
+        evaluateState(stateA, perspective) +
+        tacticalMoveScore(local, sideToMove, a) -
+        repetitionPenalty(stateA) -
+        moveBacktrackPenalty(sideToMove, a);
       const scoreB =
-        evaluateState(stateB, perspective) - repetitionPenalty(stateB) - moveBacktrackPenalty(sideToMove, b);
+        evaluateState(stateB, perspective) +
+        tacticalMoveScore(local, sideToMove, b) -
+        repetitionPenalty(stateB) -
+        moveBacktrackPenalty(sideToMove, b);
       return maximizing ? scoreB - scoreA : scoreA - scoreB;
     });
   }
 
-  function stateHash(local, depth, sideToMove, perspective) {
+  function stateHash(local, depth, quiescenceDepth, sideToMove, perspective) {
     const hunters = [...local.hunters].sort((a, b) => a - b).join(',');
-    return `${local.bear}|${hunters}|${local.bearMoves}|${depth}|${sideToMove}|${perspective}`;
+    return `${local.bear}|${hunters}|${local.bearMoves}|${depth}|${quiescenceDepth}|${sideToMove}|${perspective}`;
   }
 
-  function minimax(local, depth, sideToMove, perspective, alpha, beta, transposition) {
+  function minimax(local, depth, quiescenceDepth, sideToMove, perspective, alpha, beta, transposition) {
     const bearMoves = getBearLegalMoves(local);
     const terminalBearTrapped = local.bear !== null && bearMoves.length === 0;
-    if (depth === 0 || terminalBearTrapped || local.bearMoves >= MAX_BEAR_MOVES) {
+    if (terminalBearTrapped || local.bearMoves >= MAX_BEAR_MOVES) {
       return evaluateState(local, perspective);
     }
 
-    const key = stateHash(local, depth, sideToMove, perspective);
+    if (depth === 0) {
+      if (quiescenceDepth <= 0 || !isTacticalState(local)) {
+        return evaluateState(local, perspective);
+      }
+      depth = 1;
+      quiescenceDepth -= 1;
+    }
+
+    const key = stateHash(local, depth, quiescenceDepth, sideToMove, perspective);
     const cached = transposition.get(key);
     if (cached !== undefined) return cached;
 
@@ -564,6 +683,7 @@ export function createGame() {
         const score = minimax(
           next,
           depth - 1,
+          quiescenceDepth,
           sideToMove === 'bear' ? 'hunters' : 'bear',
           perspective,
           alpha,
@@ -584,6 +704,7 @@ export function createGame() {
       const score = minimax(
         next,
         depth - 1,
+        quiescenceDepth,
         sideToMove === 'bear' ? 'hunters' : 'bear',
         perspective,
         alpha,
@@ -631,11 +752,15 @@ export function createGame() {
     }
 
     const depth = getDifficultyConfig().bearDepth;
+    const quiescenceDepth = getDifficultyConfig().quiescenceDepth;
+    const rolloutDepth = getDifficultyConfig().rolloutDepth;
+    const rolloutWeight = getDifficultyConfig().rolloutWeight;
+    const tacticalOverride = selectTacticalMoveWithRollout(state, 'bear', 'bear', moves.map((to) => ({ to })), rolloutDepth);
+    if (tacticalOverride) return tacticalOverride.to;
     const effectiveDepth =
-      state.difficulty === 'hard' || state.difficulty === 'master'
+      state.difficulty === 'hard'
         ? depth +
-          (moves.length <= 2 ? 2 : hunterPressureProfile(state).trapReplies > 0 ? 1 : 0) +
-          (state.difficulty === 'master' ? (moves.length <= 3 ? 2 : 1) : 0)
+          (moves.length <= 2 ? 2 : hunterPressureProfile(state).trapReplies > 0 ? 1 : 0)
         : depth;
     let bestMove = moves[0];
     let bestScore = -Infinity;
@@ -643,8 +768,23 @@ export function createGame() {
 
     for (const to of moves) {
       const simulated = applyVirtualMove(state, 'bear', { to });
+      const rolloutBonus =
+        rolloutDepth > 0 && isTacticalState(simulated)
+          ? greedyRolloutScore(simulated, 'bear', rolloutDepth) * rolloutWeight
+          : 0;
       const score =
-        minimax(simulated, effectiveDepth - 1, 'hunters', 'bear', -Infinity, Infinity, transposition) -
+        minimax(
+          simulated,
+          effectiveDepth - 1,
+          quiescenceDepth,
+          'hunters',
+          'bear',
+          -Infinity,
+          Infinity,
+          transposition
+        ) +
+        tacticalMoveScore(state, 'bear', { to }) +
+        rolloutBonus -
         repetitionPenalty(simulated) -
         moveBacktrackPenalty('bear', { to });
       if (score > bestScore) {
@@ -678,10 +818,15 @@ export function createGame() {
     }
 
     const depth = getDifficultyConfig().hunterDepth;
+    const quiescenceDepth = getDifficultyConfig().quiescenceDepth;
+    const rolloutDepth = getDifficultyConfig().rolloutDepth;
+    const rolloutWeight = getDifficultyConfig().rolloutWeight;
+    const tacticalOverride = selectTacticalMoveWithRollout(state, 'hunters', 'hunters', moves, rolloutDepth);
+    if (tacticalOverride) return tacticalOverride;
     const bearProfile = bearEscapeProfile(state);
     const effectiveDepth =
-      state.difficulty === 'master'
-        ? depth + (bearProfile.safeRoutes <= 1 ? 2 : bearProfile.safeRoutes <= 2 ? 1 : 0)
+      state.difficulty === 'hard'
+        ? depth + (bearProfile.safeRoutes <= 1 ? 1 : 0)
         : depth;
     let best = moves[0];
     let bestScore = -Infinity;
@@ -689,8 +834,23 @@ export function createGame() {
 
     for (const move of moves) {
       const simulated = applyVirtualMove(state, 'hunters', move);
+      const rolloutBonus =
+        rolloutDepth > 0 && isTacticalState(simulated)
+          ? greedyRolloutScore(simulated, 'hunters', rolloutDepth) * rolloutWeight
+          : 0;
       const score =
-        minimax(simulated, effectiveDepth - 1, 'bear', 'hunters', -Infinity, Infinity, transposition) -
+        minimax(
+          simulated,
+          effectiveDepth - 1,
+          quiescenceDepth,
+          'bear',
+          'hunters',
+          -Infinity,
+          Infinity,
+          transposition
+        ) +
+        tacticalMoveScore(state, 'hunters', move) +
+        rolloutBonus -
         repetitionPenalty(simulated) -
         moveBacktrackPenalty('hunters', move);
       if (score > bestScore) {
@@ -746,7 +906,17 @@ export function createGame() {
       }
 
       const depth = getDifficultyConfig().setupDepth;
-      const responseScore = minimax(simulated, depth, 'bear', 'bear', -Infinity, Infinity, new Map());
+      const quiescenceDepth = getDifficultyConfig().quiescenceDepth;
+      const responseScore = minimax(
+        simulated,
+        depth,
+        quiescenceDepth,
+        'bear',
+        'bear',
+        -Infinity,
+        Infinity,
+        new Map()
+      );
       bearBestReply = Math.max(bearBestReply, responseScore);
     }
 
@@ -781,7 +951,8 @@ export function createGame() {
 
       if (state.difficulty !== 'easy') {
         const depth = getDifficultyConfig().setupDepth;
-        score = minimax(simulated, depth, 'bear', 'bear', -Infinity, Infinity, new Map());
+        const quiescenceDepth = getDifficultyConfig().quiescenceDepth;
+        score = minimax(simulated, depth, quiescenceDepth, 'bear', 'bear', -Infinity, Infinity, new Map());
       }
 
       if (score > bestScore) {
@@ -851,6 +1022,43 @@ export function createGame() {
         computerHuntersMove();
       });
     }
+  }
+
+  function runComputerTurnSync() {
+    if (state.phase === 'setup-hunters' && currentControllerFor('hunters') === 'computer') {
+      computerChooseHuntersLunette();
+      return true;
+    }
+
+    if (state.phase === 'setup-bear' && currentControllerFor('bear') === 'computer') {
+      const chosen = chooseBearStartPosition();
+      if (chosen === null) {
+        state.message = 'Orso bloccato in 0 mosse.';
+        finishRound('hunters-win');
+        return true;
+      }
+      state.bear = chosen;
+      state.phase = 'playing';
+      state.turn = 'bear';
+      state.message = BEAR_TURN_HINT;
+      rememberPosition();
+      computerBearMove();
+      return true;
+    }
+
+    if (state.phase !== 'playing') return false;
+
+    if (state.turn === 'bear' && currentControllerFor('bear') === 'computer') {
+      computerBearMove();
+      return true;
+    }
+
+    if (state.turn === 'hunters' && currentControllerFor('hunters') === 'computer') {
+      computerHuntersMove();
+      return true;
+    }
+
+    return false;
   }
 
   function clickNode(nodeId) {
@@ -938,6 +1146,29 @@ export function createGame() {
     maybeComputerTurn();
   }
 
+  function setStateForBenchmark(nextState) {
+    const safeState = emptyState();
+    safeState.mode = nextState.mode ?? 'hvc';
+    safeState.computerSide = nextState.computerSide ?? 'bear';
+    safeState.difficulty = resolveDifficulty(nextState.difficulty);
+    safeState.round = Number.isInteger(nextState.round) ? nextState.round : 1;
+    safeState.roundResults = [];
+    safeState.lastRoundResult = null;
+    safeState.matchSummary = null;
+    safeState.hunters = Array.isArray(nextState.hunters) ? [...nextState.hunters] : [];
+    safeState.bear = nextState.bear ?? null;
+    safeState.turn = nextState.turn ?? 'bear';
+    safeState.selectedHunter = null;
+    safeState.bearMoves = Number.isInteger(nextState.bearMoves) ? nextState.bearMoves : 0;
+    safeState.phase = nextState.phase ?? 'playing';
+    safeState.message = typeof nextState.message === 'string' ? nextState.message : '';
+
+    state = safeState;
+    resetRecentPositions();
+    resetRecentMoves();
+    rememberPosition();
+  }
+
   function setOnChange(cb) {
     onChange = cb;
   }
@@ -958,9 +1189,11 @@ export function createGame() {
     newMatch,
     setConfig,
     setOnChange,
+    setStateForBenchmark,
+    runComputerTurnSync,
     hunterLunettes: HUNTER_LUNETTES,
     edges: EDGE_LIST,
     adjacency,
-    difficulties: ['easy', 'medium', 'hard', 'master']
+    difficulties: ['easy', 'medium', 'hard']
   };
 }

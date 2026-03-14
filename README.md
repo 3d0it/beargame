@@ -4,7 +4,7 @@ Questo progetto è usato per esplorare la programmazione con agenti, implementan
 
 Implementazione a codebase unica del gioco dell'orso con:
 - Modalità `umano vs umano`
-- Modalità `umano vs IA` con livelli `facile`, `medio`, `difficile`, `maestro`
+- Modalità `umano vs IA` con livelli `facile`, `medio`, `difficile`
 - Distribuzione web (GitHub Pages)
 - Packaging Android + pubblicazione Play Store via GitHub Actions
 
@@ -43,6 +43,7 @@ Comandi utili:
 npm test
 npm run test:ui
 npm run test:coverage
+npm run benchmark:ai:medium-hard
 ```
 
 ## Pubblicazione web automatica

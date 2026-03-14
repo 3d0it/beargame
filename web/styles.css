@@ -401,10 +401,6 @@ h2 {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.side-toggle--quad {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
 .side-btn {
   padding: 0.62rem 0.7rem;
 }

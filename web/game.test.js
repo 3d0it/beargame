@@ -85,8 +85,8 @@ describe('createGame', () => {
 
   it('salva la difficolta selezionata e usa easy come fallback', () => {
     const game = createGame();
-    game.newMatch('hvc', 'bear', 'master');
-    expect(game.getState().difficulty).toBe('master');
+    game.newMatch('hvc', 'bear', 'hard');
+    expect(game.getState().difficulty).toBe('hard');
 
     game.newMatch('hvc', 'bear', 'impossible');
     expect(game.getState().difficulty).toBe('easy');
@@ -369,10 +369,10 @@ describe('createGame', () => {
     const onChange = vi.fn();
     game.setOnChange(onChange);
 
-    game.setConfig('hvc', 'hunters', 'master');
+    game.setConfig('hvc', 'hunters', 'hard');
     expect(game.getState().mode).toBe('hvc');
     expect(game.getState().computerSide).toBe('hunters');
-    expect(game.getState().difficulty).toBe('master');
+    expect(game.getState().difficulty).toBe('hard');
     expect(onChange).toHaveBeenCalledTimes(1);
 
     game.setConfig('hvc', 'bear', 'unknown');
@@ -498,9 +498,33 @@ describe('createGame', () => {
     vi.useRealTimers();
   });
 
-  it('espone anche la difficolta master', () => {
+  it('espone le tre difficolta disponibili', () => {
     const game = createGame();
-    expect(game.difficulties).toEqual(['easy', 'medium', 'hard', 'master']);
+    expect(game.difficulties).toEqual(['easy', 'medium', 'hard']);
+  });
+
+  it('espone hook sincroni per benchmark locale dell IA', () => {
+    const game = createGame();
+    game.setStateForBenchmark({
+      mode: 'hvc',
+      computerSide: 'bear',
+      difficulty: 'medium',
+      round: 1,
+      phase: 'playing',
+      turn: 'bear',
+      bear: 18,
+      hunters: [1, 19, 20],
+      bearMoves: 5
+    });
+
+    const before = game.getState();
+    const moved = game.runComputerTurnSync();
+    const after = game.getState();
+
+    expect(moved).toBe(true);
+    expect(after.bear).not.toBe(before.bear);
+    expect(after.bearMoves).toBe(6);
+    expect(after.turn).toBe('hunters');
   });
 });
 

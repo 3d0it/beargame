@@ -20,7 +20,8 @@
     "test:ui": "vitest run web/ui.integration.test.js",
     "test:coverage": "vitest run --coverage",
     "eval:ai": "node ./scripts/evaluate-ai.mjs",
-    "eval:ai:top": "node ./scripts/evaluate-ai.mjs --difficulties=hard,master --opponents=greedy --matches=6"
+    "eval:ai:top": "node ./scripts/evaluate-ai.mjs --difficulties=medium,hard --opponents=greedy --matches=6",
+    "benchmark:ai:medium-hard": "node ./scripts/benchmark-medium-hard.mjs"
   },
   "devDependencies": {
     "@capacitor/android": "^8.1.0",
