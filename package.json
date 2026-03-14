@@ -20,6 +20,8 @@
     "test:e2e:full": "PW_VIEWPORT_PROFILE=full playwright test",
     "test:ui": "vitest run web/ui.integration.test.js",
     "test:coverage": "vitest run --coverage",
+    "release:check": "node ./scripts/release-check.mjs",
+    "release:check:full": "node ./scripts/release-check.mjs full",
     "eval:ai": "node ./scripts/evaluate-ai.mjs",
     "eval:ai:quick": "node ./scripts/evaluate-ai.mjs --difficulties=medium,hard --opponents=greedy --matches=2",
     "eval:ai:top": "node ./scripts/evaluate-ai.mjs --difficulties=medium,hard --opponents=greedy --matches=6",

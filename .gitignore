@@ -2,6 +2,8 @@ node_modules/
 android/
 coverage/
 dist/
+playwright-report/
+test-results/
 .DS_Store
 npm-debug.log*
 assets/playstore/
