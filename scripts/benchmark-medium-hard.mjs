@@ -271,8 +271,8 @@ function normalizedMoveScore(optionScore, bestScore, worstScore) {
 }
 
 function runDifficultyOnPosition(position, difficulty) {
-  const game = createGame();
-  game.setStateForBenchmark({
+  const game = createGame({ enableBenchmarkTools: true });
+  game.benchmark.setState({
     ...position.state,
     difficulty,
     mode: 'hvc'
@@ -284,7 +284,7 @@ function runDifficultyOnPosition(position, difficulty) {
   const worstScore = options.at(-1)?.score ?? bestScore;
 
   const startedAt = performance.now();
-  game.runComputerTurnSync();
+  game.benchmark.runComputerTurnSync();
   const elapsedMs = performance.now() - startedAt;
 
   const after = game.getState();

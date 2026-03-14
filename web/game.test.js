@@ -503,9 +503,14 @@ describe('createGame', () => {
     expect(game.difficulties).toEqual(['easy', 'medium', 'hard']);
   });
 
-  it('espone hook sincroni per benchmark locale dell IA', () => {
+  it('non espone hook di benchmark di default', () => {
     const game = createGame();
-    game.setStateForBenchmark({
+    expect(game.benchmark).toBeUndefined();
+  });
+
+  it('espone hook sincroni per benchmark solo in modalita esplicita', () => {
+    const game = createGame({ enableBenchmarkTools: true });
+    game.benchmark.setState({
       mode: 'hvc',
       computerSide: 'bear',
       difficulty: 'medium',
@@ -518,7 +523,7 @@ describe('createGame', () => {
     });
 
     const before = game.getState();
-    const moved = game.runComputerTurnSync();
+    const moved = game.benchmark.runComputerTurnSync();
     const after = game.getState();
 
     expect(moved).toBe(true);

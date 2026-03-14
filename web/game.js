@@ -148,7 +148,8 @@ function emptyState() {
   };
 }
 
-export function createGame() {
+export function createGame(options = {}) {
+  const enableBenchmarkTools = options.enableBenchmarkTools === true;
   let state = emptyState();
   let onChange = null;
   let matchEpoch = 0;
@@ -1183,17 +1184,24 @@ export function createGame() {
     };
   }
 
-  return {
+  const api = {
     getState,
     clickNode,
     newMatch,
     setConfig,
     setOnChange,
-    setStateForBenchmark,
-    runComputerTurnSync,
     hunterLunettes: HUNTER_LUNETTES,
     edges: EDGE_LIST,
     adjacency,
     difficulties: ['easy', 'medium', 'hard']
   };
+
+  if (enableBenchmarkTools) {
+    api.benchmark = {
+      setState: setStateForBenchmark,
+      runComputerTurnSync
+    };
+  }
+
+  return api;
 }
