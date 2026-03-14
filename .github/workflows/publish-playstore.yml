@@ -84,7 +84,7 @@ jobs:
           node-version: 22
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
@@ -152,6 +152,7 @@ jobs:
 
       - name: Upload to Google Play (${{ github.event.inputs.track || 'internal' }})
         if: ${{ github.event.inputs.release_status != 'inProgress' }}
+        # Keep v1 until the action publishes a Node 24-ready release we can validate safely.
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJson: ${{ steps.auth.outputs.credentials_file_path }}
@@ -162,6 +163,7 @@ jobs:
 
       - name: Upload to Google Play staged rollout (${{ github.event.inputs.track || 'internal' }})
         if: ${{ github.event.inputs.release_status == 'inProgress' }}
+        # Keep v1 until the action publishes a Node 24-ready release we can validate safely.
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJson: ${{ steps.auth.outputs.credentials_file_path }}
