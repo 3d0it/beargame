@@ -45,8 +45,13 @@ npm run build
 npm run test:ui
 npm run test:coverage
 npm run test:e2e:smoke
+npm run eval:ai:quick
 npm run benchmark:ai:medium-hard
 ```
+
+Per il tuning delle difficolta:
+- metrica primaria: `npm run benchmark:ai:medium-hard`
+- misura esplorativa piu lenta: `npm run eval:ai:quick` oppure `npm run eval:ai`
 
 ## Pubblicazione web automatica
 Workflow: `.github/workflows/deploy-web.yml`

@@ -360,6 +360,9 @@ if (scenarios.length === 0) {
 const allResults = scenarios.map((scenario) => evaluateScenario(scenario));
 const grouped = new Map();
 
+console.log('AI evaluation report');
+console.log('Note: use `npm run benchmark:ai:medium-hard` as the primary tuning metric for medium vs hard.');
+
 for (const result of allResults) {
   const list = grouped.get(result.difficulty) ?? [];
   list.push(result);
