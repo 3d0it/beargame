@@ -1,45 +1,17 @@
-export const BOARD_NODES = [
-  { id: 0, x: 50, y: 7 },
-  { id: 1, x: 28.5, y: 12.8 },
-  { id: 2, x: 50, y: 22 },
-  { id: 3, x: 71.5, y: 12.8 },
-  { id: 4, x: 12.8, y: 28.5 },
-  { id: 5, x: 22, y: 50 },
-  { id: 6, x: 12.8, y: 71.5 },
-  { id: 7, x: 87.2, y: 28.5 },
-  { id: 8, x: 78, y: 50 },
-  { id: 9, x: 87.2, y: 71.5 },
-  { id: 10, x: 28.5, y: 87.2 },
-  { id: 11, x: 50, y: 78 },
-  { id: 12, x: 71.5, y: 87.2 },
-  { id: 13, x: 50, y: 93 },
-  { id: 14, x: 7, y: 50 },
-  { id: 15, x: 93, y: 50 },
-  { id: 16, x: 50, y: 35 },
-  { id: 17, x: 35, y: 50 },
-  { id: 18, x: 50, y: 50 },
-  { id: 19, x: 65, y: 50 },
-  { id: 20, x: 50, y: 65 }
-];
-
-const EDGE_LIST = [
-  [0, 3], [3, 7], [7, 15], [15, 9], [9, 12], [12, 13],
-  [13, 10], [10, 6], [6, 14], [14, 4], [4, 1], [1, 0],
-  [1, 2], [2, 3],
-  [10, 11], [11, 12],
-  [4, 5], [5, 6],
-  [7, 8], [8, 9],
-  [0, 2], [2, 16], [16, 18], [18, 20], [20, 11], [11, 13],
-  [14, 5], [5, 17], [17, 18], [18, 19], [19, 8], [8, 15],
-  [16, 19], [19, 20], [20, 17], [17, 16]
-];
-
-const HUNTER_LUNETTES = [
-  [1, 2, 3],
-  [4, 5, 6],
-  [7, 8, 9],
-  [10, 11, 12]
-];
+import {
+  adjacency,
+  applyVirtualMoveToState,
+  BOARD_NODES,
+  cloneGameState,
+  EDGE_LIST,
+  getBearLegalMovesForState,
+  getHunterLegalMovesForState,
+  HUNTER_LUNETTES,
+  isOccupiedNode,
+  nodeDistance,
+  reachableCountForState
+} from './game-state-helpers.js';
+export { BOARD_NODES } from './game-state-helpers.js';
 const GAME_DIFFICULTIES = new Set(['easy', 'medium', 'hard']);
 const HUNTERS_SETUP_HINT = 'I Cacciatori devono scegliere una lunetta iniziale.';
 const BEAR_TURN_HINT = "Turno dell'Orso: seleziona una casella adiacente libera.";
@@ -120,14 +92,7 @@ export function summarizeMatch(results) {
   };
 }
 
-const adjacency = new Map();
-for (const node of BOARD_NODES) adjacency.set(node.id, []);
-for (const [a, b] of EDGE_LIST) {
-  adjacency.get(a).push(b);
-  adjacency.get(b).push(a);
-}
 const NODE_IDS = new Set(BOARD_NODES.map((node) => node.id));
-const NODE_BY_ID = new Map(BOARD_NODES.map((node) => [node.id, node]));
 
 function emptyState() {
   return {
@@ -236,7 +201,7 @@ export function createGame(options = {}) {
   }
 
   function isOccupied(nodeId, local = state) {
-    return local.bear === nodeId || local.hunters.includes(nodeId);
+    return isOccupiedNode(local, nodeId);
   }
 
   function canMove(from, to, local = state) {
@@ -246,21 +211,11 @@ export function createGame(options = {}) {
 
   function getBearLegalMoves(local = state) {
     if (!isValidNodeId(local.bear)) return [];
-    return adjacency.get(local.bear).filter((to) => !isOccupied(to, local));
+    return getBearLegalMovesForState(local);
   }
 
   function getHunterLegalMoves(local = state) {
-    const result = [];
-    for (let i = 0; i < local.hunters.length; i += 1) {
-      const from = local.hunters[i];
-      if (!isValidNodeId(from)) continue;
-      for (const to of adjacency.get(from)) {
-        if (!isOccupied(to, local)) {
-          result.push({ hunterIndex: i, from, to });
-        }
-      }
-    }
-    return result;
+    return getHunterLegalMovesForState(local);
   }
 
   function isBearTrapped(local = state) {
@@ -357,10 +312,7 @@ export function createGame(options = {}) {
   }
 
   function cloneState(local) {
-    return {
-      ...local,
-      hunters: [...local.hunters]
-    };
+    return cloneGameState(local);
   }
 
   function getDifficultyConfig() {
@@ -376,32 +328,8 @@ export function createGame(options = {}) {
     });
   }
 
-  function nodeDistance(a, b) {
-    const nodeA = NODE_BY_ID.get(a);
-    const nodeB = NODE_BY_ID.get(b);
-    if (!nodeA || !nodeB) return 0;
-    const dx = nodeA.x - nodeB.x;
-    const dy = nodeA.y - nodeB.y;
-    return Math.hypot(dx, dy);
-  }
-
   function reachableCount(local, start, maxDepth) {
-    if (start === null || start === undefined) return 0;
-    const queue = [{ node: start, depth: 0 }];
-    const visited = new Set([start]);
-
-    while (queue.length > 0) {
-      const current = queue.shift();
-      if (!current || current.depth >= maxDepth) continue;
-
-      for (const next of adjacency.get(current.node) ?? []) {
-        if (visited.has(next) || local.hunters.includes(next)) continue;
-        visited.add(next);
-        queue.push({ node: next, depth: current.depth + 1 });
-      }
-    }
-
-    return visited.size;
+    return reachableCountForState(local, start, maxDepth);
   }
 
   function hunterPressureProfile(local) {
@@ -610,17 +538,7 @@ export function createGame(options = {}) {
   }
 
   function applyVirtualMove(local, side, move) {
-    const next = cloneState(local);
-    if (side === 'bear') {
-      next.bear = move.to;
-      next.bearMoves += 1;
-      next.turn = 'hunters';
-      return next;
-    }
-
-    next.hunters[move.hunterIndex] = move.to;
-    next.turn = 'bear';
-    return next;
+    return applyVirtualMoveToState(local, side, move);
   }
 
   function legalMovesFor(side, local) {

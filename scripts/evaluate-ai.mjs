@@ -1,4 +1,13 @@
-import { BOARD_NODES, MAX_BEAR_MOVES, createGame } from '../web/game.js';
+import { MAX_BEAR_MOVES, createGame } from '../web/game.js';
+import {
+  BOARD_NODES,
+} from '../web/game-state-helpers.js';
+import {
+  chooseGreedyMove,
+  getBearLegalMoves,
+  getHunterLegalMoves,
+  strategicScore
+} from './ai-eval-helpers.mjs';
 
 const BASE_SCENARIOS = [
   { difficulty: 'easy', opponent: 'random', matches: 16 },
@@ -16,19 +25,7 @@ const TARGET_RATINGS = {
 const VALID_DIFFICULTIES = new Set(Object.keys(TARGET_RATINGS));
 const VALID_OPPONENTS = new Set(['random', 'greedy']);
 
-const adjacency = buildAdjacency(createGame().edges);
 const hunterLunettes = createGame().hunterLunettes.map((lunette) => [...lunette]);
-const NODE_BY_ID = new Map(BOARD_NODES.map((node) => [node.id, node]));
-
-function buildAdjacency(edges) {
-  const map = new Map();
-  for (const node of BOARD_NODES) map.set(node.id, []);
-  for (const [a, b] of edges) {
-    map.get(a).push(b);
-    map.get(b).push(a);
-  }
-  return map;
-}
 
 function parseArgs(argv) {
   const options = {
@@ -88,92 +85,6 @@ function isOccupied(state, nodeId) {
   return state.bear === nodeId || state.hunters.includes(nodeId);
 }
 
-function getBearLegalMoves(state) {
-  if (state.bear === null) return [];
-  return (adjacency.get(state.bear) ?? []).filter((nodeId) => !isOccupied(state, nodeId));
-}
-
-function getHunterLegalMoves(state) {
-  const moves = [];
-  for (let hunterIndex = 0; hunterIndex < state.hunters.length; hunterIndex += 1) {
-    const from = state.hunters[hunterIndex];
-    for (const to of adjacency.get(from) ?? []) {
-      if (!isOccupied(state, to)) {
-        moves.push({ hunterIndex, from, to });
-      }
-    }
-  }
-  return moves;
-}
-
-function cloneState(state) {
-  return {
-    ...state,
-    hunters: [...state.hunters]
-  };
-}
-
-function applyBearMove(state, to) {
-  const next = cloneState(state);
-  next.bear = to;
-  next.bearMoves += 1;
-  return next;
-}
-
-function applyHunterMove(state, move) {
-  const next = cloneState(state);
-  next.hunters[move.hunterIndex] = move.to;
-  return next;
-}
-
-function nodeDistance(a, b) {
-  const nodeA = NODE_BY_ID.get(a);
-  const nodeB = NODE_BY_ID.get(b);
-  if (!nodeA || !nodeB) return 0;
-  return Math.hypot(nodeA.x - nodeB.x, nodeA.y - nodeB.y);
-}
-
-function reachableCount(state, start, maxDepth) {
-  const queue = [{ node: start, depth: 0 }];
-  const visited = new Set([start]);
-
-  while (queue.length > 0) {
-    const current = queue.shift();
-    if (!current || current.depth >= maxDepth) continue;
-    for (const next of adjacency.get(current.node) ?? []) {
-      if (visited.has(next) || state.hunters.includes(next)) continue;
-      visited.add(next);
-      queue.push({ node: next, depth: current.depth + 1 });
-    }
-  }
-
-  return visited.size;
-}
-
-function bearHeuristic(state) {
-  const mobility = getBearLegalMoves(state);
-  if (mobility.length === 0) return -100000;
-  if (state.bearMoves >= MAX_BEAR_MOVES) return 100000;
-
-  const twoStep = mobility
-    .map((to) => getBearLegalMoves(applyBearMove(state, to)).length)
-    .reduce((sum, count) => sum + count, 0);
-  const centerDistance = nodeDistance(state.bear, 18);
-  const nearbyHunters = state.hunters.filter((hunter) => (adjacency.get(state.bear) ?? []).includes(hunter)).length;
-
-  return mobility.length * 45 + twoStep * 12 + reachableCount(state, state.bear, 3) * 8 - nearbyHunters * 28 - centerDistance * 0.4;
-}
-
-function hunterHeuristic(state) {
-  const mobility = getBearLegalMoves(state).length;
-  let containment = 0;
-  for (const move of getHunterLegalMoves(state)) {
-    const next = applyHunterMove(state, move);
-    containment += mobility - getBearLegalMoves(next).length;
-  }
-  return -mobility * 55 + containment * 10 - reachableCount(state, state.bear, 2) * 6;
-}
-
 function chooseRandomLunette(rng) {
   return sample(hunterLunettes, rng);
 }
@@ -187,11 +98,12 @@ function chooseGreedyLunette(rng) {
       if (lunette.includes(node.id)) continue;
       bearBestReply = Math.max(
         bearBestReply,
-        bearHeuristic({
+        strategicScore({
           hunters: lunette,
           bear: node.id,
-          bearMoves: 0
-        })
+          bearMoves: 0,
+          turn: 'bear'
+        }, 'bear')
       );
     }
     if (bearBestReply < bestScore || (bearBestReply === bestScore && rng() < 0.5)) {
@@ -228,10 +140,10 @@ function chooseGreedyBearStart(state, rng) {
   let best = options[0];
   let bestScore = -Infinity;
   for (const nodeId of options) {
-    const score = bearHeuristic({
+    const score = strategicScore({
       ...state,
       bear: nodeId
-    });
+    }, 'bear');
     if (score > bestScore || (score === bestScore && rng() < 0.5)) {
       bestScore = score;
       best = nodeId;
@@ -248,16 +160,9 @@ function chooseRandomBearMove(state, rng) {
 function chooseGreedyBearMove(state, rng) {
   const moves = getBearLegalMoves(state);
   if (moves.length === 0) return null;
-  let best = moves[0];
-  let bestScore = -Infinity;
-  for (const to of moves) {
-    const score = bearHeuristic(applyBearMove(state, to));
-    if (score > bestScore || (score === bestScore && rng() < 0.5)) {
-      bestScore = score;
-      best = to;
-    }
-  }
-  return best;
+  const bestMove = chooseGreedyMove({ ...state, turn: 'bear' });
+  if (!bestMove) return null;
+  return bestMove.to;
 }
 
 function chooseRandomHunterMove(state, rng) {
@@ -268,16 +173,9 @@ function chooseRandomHunterMove(state, rng) {
 function chooseGreedyHunterMove(state, rng) {
   const moves = getHunterLegalMoves(state);
   if (moves.length === 0) return null;
-  let best = moves[0];
-  let bestScore = -Infinity;
-  for (const move of moves) {
-    const score = hunterHeuristic(applyHunterMove(state, move));
-    if (score > bestScore || (score === bestScore && rng() < 0.5)) {
-      bestScore = score;
-      best = move;
-    }
-  }
-  return best;
+  const bestMove = chooseGreedyMove({ ...state, turn: 'hunters' });
+  if (!bestMove) return null;
+  return bestMove;
 }
 
 function policyFor(opponent, rng) {
