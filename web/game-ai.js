@@ -38,9 +38,17 @@ export function createAiEngine({
     return { trapReplies, squeezeReplies };
   }
 
-  function centerEscapeProfile(local) {
+  function centralControlProfile(local) {
     const bearAtCenter = local.bear === CENTER_NODE;
     const bearNearCenter = bearAtCenter || INNER_RING_NODES.has(local.bear);
+    const bearAdjacency = adjacency.get(local.bear) ?? [];
+    const directBlockers = bearAdjacency.filter((nodeId) => local.hunters.includes(nodeId)).length;
+    const outerEscapes = getBearLegalMoves(local).filter(
+      (nodeId) => nodeId !== CENTER_NODE && !INNER_RING_NODES.has(nodeId)
+    ).length;
+    const innerRingControl = [...INNER_RING_NODES].filter(
+      (nodeId) => nodeId !== local.bear && local.hunters.includes(nodeId)
+    ).length;
     const reachableOuterGateways = new Set();
 
     for (const to of getBearLegalMoves(local)) {
@@ -58,6 +66,10 @@ export function createAiEngine({
     return {
       bearAtCenter,
       bearNearCenter,
+      bearInCentralZone: bearNearCenter,
+      directBlockers,
+      outerEscapes,
+      innerRingControl,
       openOuterGateways,
       reachableOuterGateways: reachableOuterGateways.size
     };
@@ -102,8 +114,8 @@ export function createAiEngine({
     const { trapReplies, squeezeReplies } = hunterPressureProfile(next);
     const { safeRoutes, trapRoutes, squeezeRoutes, frontierReach } = bearEscapeProfile(next);
     const immediateTraps = immediateTrapCount(next);
-    const centerBefore = centerEscapeProfile(local);
-    const centerAfter = centerEscapeProfile(next);
+    const centerBefore = centralControlProfile(local);
+    const centerAfter = centralControlProfile(next);
 
     if (sideToMove === 'bear') {
       return (
@@ -113,6 +125,9 @@ export function createAiEngine({
         mobility * 160 -
         (centerAfter.bearAtCenter ? 140 : 0) -
         (centerAfter.bearNearCenter ? centerAfter.reachableOuterGateways * 44 : 0) -
+        (centerAfter.bearInCentralZone ? centerAfter.directBlockers * 150 : 0) -
+        (centerAfter.bearInCentralZone ? centerAfter.innerRingControl * 95 : 0) +
+        (centerAfter.bearInCentralZone ? centerAfter.outerEscapes * 55 : 0) -
         trapReplies * 1500 -
         immediateTraps * 1700 -
         squeezeReplies * 340 -
@@ -131,6 +146,9 @@ export function createAiEngine({
       trapReplies * 60 +
       (centerBefore.reachableOuterGateways - centerAfter.reachableOuterGateways) * 220 +
       (centerBefore.openOuterGateways - centerAfter.openOuterGateways) * 80 +
+      (centerAfter.bearInCentralZone ? centerAfter.directBlockers * 260 : 0) +
+      (centerAfter.bearInCentralZone ? centerAfter.innerRingControl * 120 : 0) +
+      (centerBefore.outerEscapes - centerAfter.outerEscapes) * 170 +
       (centerAfter.bearAtCenter ? -120 : 0)
     );
   }
@@ -181,7 +199,7 @@ export function createAiEngine({
     ).length;
     const { trapReplies, squeezeReplies } = hunterPressureProfile(local);
     const { safeRoutes, trapRoutes, squeezeRoutes, frontierReach } = bearEscapeProfile(local);
-    const centerEscape = centerEscapeProfile(local);
+    const centerControl = centralControlProfile(local);
     const mobilityDanger = mobility <= 1 ? 180 : mobility === 2 ? 80 : 0;
 
     const bearScore =
@@ -197,8 +215,11 @@ export function createAiEngine({
       squeezeReplies * 26 -
       trapRoutes * 120 -
       squeezeRoutes * 55 -
-      (centerEscape.bearAtCenter ? 110 : 0) -
-      (centerEscape.bearNearCenter ? centerEscape.reachableOuterGateways * 22 : 0) -
+      (centerControl.bearAtCenter ? 110 : 0) -
+      (centerControl.bearNearCenter ? centerControl.reachableOuterGateways * 22 : 0) -
+      (centerControl.bearInCentralZone ? centerControl.directBlockers * 72 : 0) -
+      (centerControl.bearInCentralZone ? centerControl.innerRingControl * 38 : 0) +
+      (centerControl.bearInCentralZone ? centerControl.outerEscapes * 22 : 0) -
       mobilityDanger -
       centerDistance * 0.5 -
       hunterAdjacency * 32;

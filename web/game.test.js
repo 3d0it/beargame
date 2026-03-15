@@ -589,7 +589,7 @@ describe('createGame', () => {
     vi.useRealTimers();
   });
 
-  it('in hvc hard con orso al centro i cacciatori privilegiano la chiusura di un gateway esterno', () => {
+  it('in hvc hard con orso al centro i cacciatori aumentano il controllo dell anello interno', () => {
     const game = createGame({ enableBenchmarkTools: true });
     game.benchmark.setState({
       mode: 'hvc',
@@ -605,10 +605,32 @@ describe('createGame', () => {
 
     game.benchmark.runComputerTurnSync();
     const after = game.getState();
-    const outerGateways = [2, 5, 8, 11];
+    const innerRingNodes = [16, 17, 19, 20];
 
     expect(after.turn).toBe('bear');
-    expect(after.hunters.some((nodeId) => outerGateways.includes(nodeId))).toBe(true);
+    expect(after.hunters.filter((nodeId) => innerRingNodes.includes(nodeId))).toHaveLength(3);
+  });
+
+  it('in hvc hard chiude un accesso diretto al centro quando puo costringere l orso a uscire', () => {
+    const game = createGame({ enableBenchmarkTools: true });
+    game.benchmark.setState({
+      mode: 'hvc',
+      computerSide: 'hunters',
+      difficulty: 'hard',
+      round: 1,
+      phase: 'playing',
+      turn: 'hunters',
+      bear: 16,
+      hunters: [17, 18, 8],
+      bearMoves: 6
+    });
+
+    game.benchmark.runComputerTurnSync();
+    const after = game.getState();
+
+    expect(after.turn).toBe('bear');
+    expect(after.hunters).toContain(19);
+    expect(after.hunters).not.toContain(8);
   });
 
   it('in hvc hard con IA orso usa setup e mossa avanzata', () => {
