@@ -296,6 +296,28 @@ describe('createGame', () => {
     vi.useRealTimers();
   });
 
+  it('in hvc hard usa un fast path per la prima lunetta su tavoliere vuoto', () => {
+    const game = createGame({ enableBenchmarkTools: true });
+    game.benchmark.setState({
+      mode: 'hvc',
+      computerSide: 'hunters',
+      difficulty: 'hard',
+      round: 1,
+      phase: 'setup-hunters',
+      turn: 'hunters',
+      hunters: [],
+      bear: null,
+      bearMoves: 0
+    });
+
+    const moved = game.benchmark.runComputerTurnSync();
+    const state = game.getState();
+
+    expect(moved).toBe(true);
+    expect(state.phase).toBe('setup-bear');
+    expect(state.hunters).toEqual([1, 2, 3]);
+  });
+
   it('in setup cacciatori con IA ignora click umano prima del timer', () => {
     vi.useFakeTimers();
     const game = createGame();

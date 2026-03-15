@@ -341,7 +341,23 @@ export function createGame(options = {}) {
     return ai.scoreLunette(state, lunette, state.difficulty, getDifficultyConfig(), BOARD_NODES);
   }
 
+  function isSymmetricOpeningSetup(local = state) {
+    return (
+      local.phase === 'setup-hunters' &&
+      local.bear === null &&
+      Array.isArray(local.hunters) &&
+      local.hunters.length === 0 &&
+      local.bearMoves === 0
+    );
+  }
+
   function computerChooseHuntersLunette() {
+    // On an empty board all opening lunettes are rotationally equivalent.
+    if (isSymmetricOpeningSetup()) {
+      chooseHuntersLunette(HUNTER_LUNETTES[0]);
+      return;
+    }
+
     let bestLunette = HUNTER_LUNETTES[0];
     let bestScore = Infinity;
 
