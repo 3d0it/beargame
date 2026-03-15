@@ -509,12 +509,18 @@ describe('createGame', () => {
   });
 
   it('in hvc hard i cacciatori evitano di oscillare tra le stesse due formazioni', () => {
-    vi.useFakeTimers();
-    const game = createGame();
-    game.newMatch('hvc', 'hunters', 'hard');
-
-    vi.runOnlyPendingTimers();
-    game.clickNode(18);
+    const game = createGame({ enableBenchmarkTools: true });
+    game.benchmark.setState({
+      mode: 'hvc',
+      computerSide: 'hunters',
+      difficulty: 'hard',
+      round: 1,
+      phase: 'playing',
+      turn: 'bear',
+      bear: 18,
+      hunters: [1, 19, 20],
+      bearMoves: 1
+    });
 
     const hunterLayouts = [];
     const preferredPath = [17, 18, 17, 18, 17, 18];
@@ -530,7 +536,7 @@ describe('createGame', () => {
       const beforeReply = game.getState();
       if (beforeReply.phase !== 'playing' || beforeReply.turn !== 'hunters') break;
 
-      vi.runOnlyPendingTimers();
+      game.benchmark.runComputerTurnSync();
       const afterReply = game.getState();
       if (afterReply.phase !== 'playing') break;
       hunterLayouts.push([...afterReply.hunters].sort((a, b) => a - b).join(','));
@@ -538,7 +544,6 @@ describe('createGame', () => {
 
     expect(hunterLayouts.length).toBeGreaterThan(3);
     expect(new Set(hunterLayouts).size).toBeGreaterThan(2);
-    vi.useRealTimers();
   });
 
   it('in hvc hard i cacciatori evitano di ripetere la stessa risposta quando l orso ricrea lo stesso stato', () => {
