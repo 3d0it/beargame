@@ -178,4 +178,39 @@ describe('createBoardRenderer', () => {
     expect(guideNodes).toHaveLength(12);
     restore();
   });
+
+  it('mentre l IA pensa marca il board come busy e ignora i click', () => {
+    const restore = makeFakeDom();
+    const board = new FakeSvgElement('svg');
+    const game = {
+      getState: () => ({
+        bear: 18,
+        hunters: [1, 19, 20],
+        selectedHunter: null,
+        aiThinking: true,
+        aiThinkingSide: 'bear'
+      }),
+      clickNode: vi.fn()
+    };
+
+    const renderer = createBoardRenderer({ board, game });
+    renderer.render();
+
+    expect(board.getAttribute('data-busy')).toBe('true');
+
+    const hit = visit(
+      board,
+      (el) =>
+        el.tagName === 'circle' &&
+        el.getAttribute('class') === 'node-hit' &&
+        el.getAttribute('cx') === '50' &&
+        el.getAttribute('cy') === '35'
+    );
+
+    expect(hit).not.toBeNull();
+    hit.trigger('click');
+    expect(game.clickNode).not.toHaveBeenCalled();
+
+    restore();
+  });
 });

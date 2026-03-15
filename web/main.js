@@ -342,6 +342,9 @@ function compactStatusMessage(state) {
   if (state.phase === 'match-over' || state.phase === 'tie-after-two-rounds') {
     return FINAL_STATUS_HINT;
   }
+  if (state.aiThinking) {
+    return state.aiThinkingSide === 'hunters' ? 'IA sta pensando per i Cacciatori...' : "IA sta pensando per l'Orso...";
+  }
   if (typeof state.message === 'string') {
     if (state.message.includes("Turno dell'Orso") || state.message.includes('Turno dell Orso')) {
       return 'Orso: scegli una casella adiacente libera.';

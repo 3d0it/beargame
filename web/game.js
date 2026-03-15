@@ -178,6 +178,11 @@ export function createGame(options = {}) {
     resetRecentMoves();
   }
 
+  function setAiThinking(thinking, side = null) {
+    state.aiThinking = thinking;
+    state.aiThinkingSide = thinking ? side : null;
+  }
+
   function applyBearMove(to) {
     if (!canMove(state.bear, to)) return false;
     const from = state.bear;
@@ -316,12 +321,15 @@ export function createGame(options = {}) {
     return ai.chooseBearStartPosition(state, state.difficulty, getDifficultyConfig(), free);
   }
 
-  function scheduleComputerTurn(action) {
+  function scheduleComputerTurn(action, side) {
     if (pendingComputerTurn) return;
     pendingComputerTurn = true;
+    setAiThinking(true, side);
+    emitChange();
     const epoch = captureEpoch();
     setTimeout(() => {
       pendingComputerTurn = false;
+      setAiThinking(false);
       if (!isCurrentEpoch(epoch)) return;
       action();
       if (!isCurrentEpoch(epoch)) return;
@@ -336,7 +344,7 @@ export function createGame(options = {}) {
     if (state.phase === 'setup-hunters' && currentControllerFor('hunters') === 'computer') {
       scheduleComputerTurn(() => {
         computerChooseHuntersLunette();
-      });
+      }, 'hunters');
       return;
     }
 
@@ -356,7 +364,7 @@ export function createGame(options = {}) {
       emitChange();
       scheduleComputerTurn(() => {
         computerBearMove();
-      });
+      }, 'bear');
       return;
     }
 
@@ -365,14 +373,14 @@ export function createGame(options = {}) {
     if (state.turn === 'bear' && currentControllerFor('bear') === 'computer') {
       scheduleComputerTurn(() => {
         computerBearMove();
-      });
+      }, 'bear');
       return;
     }
 
     if (state.turn === 'hunters' && currentControllerFor('hunters') === 'computer') {
       scheduleComputerTurn(() => {
         computerHuntersMove();
-      });
+      }, 'hunters');
     }
   }
 
@@ -491,6 +499,7 @@ export function createGame(options = {}) {
     resetRecentPositions();
     resetRecentMoves();
     state = emptyState();
+    setAiThinking(false);
     state.mode = mode;
     state.computerSide = computerSide;
     state.difficulty = resolveDifficulty(difficulty);
@@ -511,6 +520,8 @@ export function createGame(options = {}) {
     safeState.bear = nextState.bear ?? null;
     safeState.turn = nextState.turn ?? 'bear';
     safeState.selectedHunter = null;
+    safeState.aiThinking = false;
+    safeState.aiThinkingSide = null;
     safeState.bearMoves = Number.isInteger(nextState.bearMoves) ? nextState.bearMoves : 0;
     safeState.phase = nextState.phase ?? 'playing';
     safeState.message = typeof nextState.message === 'string' ? nextState.message : '';

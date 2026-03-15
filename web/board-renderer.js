@@ -18,6 +18,9 @@ export function createBoardRenderer({ board, game, onAfterNodeClick }) {
   function render() {
     const state = game.getState();
     clearBoard(board);
+    if (typeof board.setAttribute === 'function') {
+      board.setAttribute('data-busy', state.aiThinking ? 'true' : 'false');
+    }
 
     const isHuntersSetup = state.phase === 'setup-hunters';
     if (isHuntersSetup) {
@@ -37,6 +40,7 @@ export function createBoardRenderer({ board, game, onAfterNodeClick }) {
     for (const node of BOARD_NODES) {
       const hit = createCircle(node.x, node.y, 4.8, 'node-hit');
       hit.addEventListener('click', () => {
+        if (game.getState().aiThinking) return;
         game.clickNode(node.id);
         onAfterNodeClick?.();
       });
@@ -44,16 +48,18 @@ export function createBoardRenderer({ board, game, onAfterNodeClick }) {
 
       const isSelectedHunter =
         state.selectedHunter !== null && state.hunters[state.selectedHunter] === node.id;
+      const isThinkingBear = state.aiThinking && state.aiThinkingSide === 'bear';
+      const isThinkingHunters = state.aiThinking && state.aiThinkingSide === 'hunters';
       const isBear = state.bear === node.id;
       const isHunter = state.hunters.includes(node.id);
 
       if (isBear) {
-        board.appendChild(createBearToken(node.x, node.y));
+        board.appendChild(createBearToken(node.x, node.y, isThinkingBear));
         continue;
       }
 
       if (isHunter) {
-        board.appendChild(createHunterToken(node.x, node.y, isSelectedHunter));
+        board.appendChild(createHunterToken(node.x, node.y, isSelectedHunter, isThinkingHunters));
         continue;
       }
 
@@ -213,8 +219,11 @@ function createGroup(cls) {
   return g;
 }
 
-function createBearToken(x, y) {
+function createBearToken(x, y, thinking = false) {
   const g = createGroup('piece-group');
+  if (thinking) {
+    g.appendChild(createCircle(x, y, 4.15, 'piece-thinking piece-thinking-bear'));
+  }
   g.appendChild(createCircle(x, y, 3.2, 'piece piece-bear'));
   g.appendChild(createCircle(x, y + 0.45, 0.95, 'piece-mark-bear'));
   g.appendChild(createCircle(x - 1.05, y - 0.9, 0.42, 'piece-mark-bear'));
@@ -223,10 +232,13 @@ function createBearToken(x, y) {
   return g;
 }
 
-function createHunterToken(x, y, selected) {
+function createHunterToken(x, y, selected, thinking = false) {
   const g = createGroup('piece-group');
   if (selected) {
     g.appendChild(createCircle(x, y, 3.95, 'piece-selected'));
+  }
+  if (thinking) {
+    g.appendChild(createCircle(x, y, 4.15, 'piece-thinking piece-thinking-hunter'));
   }
   g.appendChild(createCircle(x, y, 3.2, 'piece piece-hunter'));
   g.appendChild(createLine(x - 1.45, y, x + 1.45, y, 'piece-mark-hunter'));

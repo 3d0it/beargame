@@ -349,6 +349,32 @@ describe('main.js', () => {
     expect(warnSpy.mock.calls[0][1]).toBe(swError);
   });
 
+  it('mostra un messaggio esplicito quando l IA sta pensando', async () => {
+    const state = {
+      current: {
+        mode: 'hvc',
+        computerSide: 'bear',
+        round: 1,
+        phase: 'playing',
+        turn: 'bear',
+        aiThinking: true,
+        aiThinkingSide: 'hunters',
+        bearMoves: 8,
+        message: 'Turno dei Cacciatori'
+      }
+    };
+
+    const { elements, gameMock } = await importMainWithMocks({
+      registerMock: vi.fn(() => Promise.resolve()),
+      state
+    });
+
+    const onChange = gameMock.setOnChange.mock.calls[0][0];
+    onChange();
+
+    expect(elements.messageLabel.textContent).toBe('IA sta pensando per i Cacciatori...');
+  });
+
   it('in hvc mostra Umano/IA nel risultato finale', async () => {
     const state = {
       current: {

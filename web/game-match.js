@@ -63,6 +63,8 @@ export function createEmptyGameState(setupMessage) {
     bear: null,
     turn: 'hunters',
     selectedHunter: null,
+    aiThinking: false,
+    aiThinkingSide: null,
     bearMoves: 0,
     phase: 'setup-hunters',
     message: setupMessage

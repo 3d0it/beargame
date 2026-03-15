@@ -718,10 +718,45 @@ h2 {
   stroke-width: 0.7;
 }
 
+.piece-thinking {
+  fill: none;
+  stroke-width: 0.9;
+  animation: piece-thinking-pulse 1s ease-in-out infinite;
+}
+
+.piece-thinking-bear {
+  stroke: rgba(155, 79, 63, 0.75);
+}
+
+.piece-thinking-hunter {
+  stroke: rgba(61, 96, 112, 0.8);
+}
+
 .node-hit {
   fill: transparent;
   cursor: pointer;
   touch-action: manipulation;
+}
+
+#board[data-busy="true"] .node-hit {
+  pointer-events: none;
+  cursor: wait;
+}
+
+#board[data-busy="true"] {
+  filter: saturate(0.97);
+}
+
+@keyframes piece-thinking-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.98);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.03);
+  }
 }
 
 .legend {
