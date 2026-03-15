@@ -71,6 +71,10 @@ describe('createGame', () => {
     return null;
   }
 
+  function boardSignature(state) {
+    return `${state.turn}|${state.bear}|${[...state.hunters].sort((a, b) => a - b).join(',')}`;
+  }
+
   it('inizializza una nuova partita con setup corretto', () => {
     const game = createGame();
     game.newMatch('hvh', 'bear', 'easy');
@@ -480,6 +484,109 @@ describe('createGame', () => {
     }
 
     vi.useRealTimers();
+  });
+
+  it('in hvc hard i cacciatori evitano di oscillare tra le stesse due formazioni', () => {
+    vi.useFakeTimers();
+    const game = createGame();
+    game.newMatch('hvc', 'hunters', 'hard');
+
+    vi.runOnlyPendingTimers();
+    game.clickNode(18);
+
+    const hunterLayouts = [];
+    const preferredPath = [17, 18, 17, 18, 17, 18];
+
+    for (const preferred of preferredPath) {
+      const beforeBearMove = game.getState();
+      if (beforeBearMove.phase !== 'playing' || beforeBearMove.turn !== 'bear') break;
+
+      const target = pickBearMove(beforeBearMove, preferred, game);
+      if (target === null) break;
+
+      game.clickNode(target);
+      const beforeReply = game.getState();
+      if (beforeReply.phase !== 'playing' || beforeReply.turn !== 'hunters') break;
+
+      vi.runOnlyPendingTimers();
+      const afterReply = game.getState();
+      if (afterReply.phase !== 'playing') break;
+      hunterLayouts.push([...afterReply.hunters].sort((a, b) => a - b).join(','));
+    }
+
+    expect(hunterLayouts.length).toBeGreaterThan(3);
+    expect(new Set(hunterLayouts).size).toBeGreaterThan(2);
+    vi.useRealTimers();
+  });
+
+  it('in hvc hard i cacciatori evitano di ripetere la stessa risposta quando l orso ricrea lo stesso stato', () => {
+    vi.useFakeTimers();
+    const game = createGame({ enableBenchmarkTools: true });
+    game.benchmark.setState({
+      mode: 'hvc',
+      computerSide: 'hunters',
+      difficulty: 'hard',
+      round: 1,
+      phase: 'playing',
+      turn: 'bear',
+      bear: 18,
+      hunters: [16, 17, 19],
+      bearMoves: 8
+    });
+
+    const responsesByBeforeState = new Map();
+    const preferredPath = [20, 18, 20, 18, 20, 18];
+
+    for (const preferred of preferredPath) {
+      const beforeBearMove = game.getState();
+      if (beforeBearMove.phase !== 'playing' || beforeBearMove.turn !== 'bear') break;
+
+      const target = pickBearMove(beforeBearMove, preferred, game);
+      if (target === null) break;
+
+      game.clickNode(target);
+      const beforeReply = game.getState();
+      if (beforeReply.phase !== 'playing' || beforeReply.turn !== 'hunters') break;
+
+      const beforeKey = boardSignature(beforeReply);
+      vi.runOnlyPendingTimers();
+      const afterReply = game.getState();
+      if (afterReply.phase !== 'playing') break;
+
+      const afterKey = boardSignature(afterReply);
+      const responses = responsesByBeforeState.get(beforeKey) ?? [];
+      responses.push(afterKey);
+      responsesByBeforeState.set(beforeKey, responses);
+    }
+
+    const repeatedStates = [...responsesByBeforeState.values()].filter((responses) => responses.length > 1);
+    for (const responses of repeatedStates) {
+      expect(new Set(responses).size).toBeGreaterThan(1);
+    }
+
+    vi.useRealTimers();
+  });
+
+  it('in hvc hard con orso al centro i cacciatori privilegiano la chiusura di un gateway esterno', () => {
+    const game = createGame({ enableBenchmarkTools: true });
+    game.benchmark.setState({
+      mode: 'hvc',
+      computerSide: 'hunters',
+      difficulty: 'hard',
+      round: 1,
+      phase: 'playing',
+      turn: 'hunters',
+      bear: 18,
+      hunters: [16, 17, 19],
+      bearMoves: 8
+    });
+
+    game.benchmark.runComputerTurnSync();
+    const after = game.getState();
+    const outerGateways = [2, 5, 8, 11];
+
+    expect(after.turn).toBe('bear');
+    expect(after.hunters.some((nodeId) => outerGateways.includes(nodeId))).toBe(true);
   });
 
   it('in hvc hard con IA orso usa setup e mossa avanzata', () => {

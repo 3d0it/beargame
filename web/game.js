@@ -57,6 +57,7 @@ export function createGame(options = {}) {
   let pendingComputerTurn = false;
   let recentPositionHashes = [];
   let recentMoves = [];
+  let recentResponsePatterns = [];
 
   function emitChange() {
     onChange?.();
@@ -83,6 +84,10 @@ export function createGame(options = {}) {
     recentMoves = [];
   }
 
+  function resetRecentResponsePatterns() {
+    recentResponsePatterns = [];
+  }
+
   function rememberPosition(local = state) {
     recentPositionHashes.push(positionHash(local));
     if (recentPositionHashes.length > 12) {
@@ -94,6 +99,17 @@ export function createGame(options = {}) {
     recentMoves.push({ side, from, to });
     if (recentMoves.length > 12) {
       recentMoves = recentMoves.slice(-12);
+    }
+  }
+
+  function rememberResponsePattern(side, before, after) {
+    recentResponsePatterns.push({
+      side,
+      before: positionHash(before),
+      after: positionHash(after)
+    });
+    if (recentResponsePatterns.length > 12) {
+      recentResponsePatterns = recentResponsePatterns.slice(-12);
     }
   }
 
@@ -122,6 +138,24 @@ export function createGame(options = {}) {
       if (previous.from !== move.to || previous.to !== from) continue;
       const recency = recentMoves.length - i;
       penalty += Math.max(0, 56 - recency * 10);
+      break;
+    }
+
+    return penalty;
+  }
+
+  function responseLoopPenalty(side, before, after) {
+    if (!before || !after) return 0;
+    const beforeHash = positionHash(before);
+    const afterHash = positionHash(after);
+    let penalty = 0;
+
+    for (let i = recentResponsePatterns.length - 1; i >= 0; i -= 1) {
+      const previous = recentResponsePatterns[i];
+      if (previous.side !== side) continue;
+      if (previous.before !== beforeHash || previous.after !== afterHash) continue;
+      const recency = recentResponsePatterns.length - i;
+      penalty += Math.max(0, 960 - recency * 90);
       break;
     }
 
@@ -176,6 +210,7 @@ export function createGame(options = {}) {
     resetStateForNextRound(state, HUNTERS_SETUP_HINT);
     resetRecentPositions();
     resetRecentMoves();
+    resetRecentResponsePatterns();
   }
 
   function setAiThinking(thinking, side = null) {
@@ -185,6 +220,7 @@ export function createGame(options = {}) {
 
   function applyBearMove(to) {
     if (!canMove(state.bear, to)) return false;
+    const before = cloneState(state);
     const from = state.bear;
     state.bear = to;
     state.bearMoves += 1;
@@ -202,6 +238,7 @@ export function createGame(options = {}) {
     state.message = HUNTERS_TURN_HINT;
     rememberMove('bear', from, to);
     rememberPosition();
+    rememberResponsePattern('bear', before, state);
     return true;
   }
 
@@ -209,6 +246,7 @@ export function createGame(options = {}) {
     if (!Number.isInteger(hunterIndex) || hunterIndex < 0 || hunterIndex >= state.hunters.length) {
       return false;
     }
+    const before = cloneState(state);
     const from = state.hunters[hunterIndex];
     if (!canMove(from, to)) return false;
     state.hunters[hunterIndex] = to;
@@ -224,6 +262,7 @@ export function createGame(options = {}) {
     state.message = BEAR_TURN_HINT;
     rememberMove('hunters', from, to);
     rememberPosition();
+    rememberResponsePattern('hunters', before, state);
     return true;
   }
 
@@ -266,7 +305,8 @@ export function createGame(options = {}) {
     getHunterLegalMoves,
     applyVirtualMove: applyVirtualMoveToState,
     repetitionPenalty,
-    moveBacktrackPenalty
+    moveBacktrackPenalty,
+    responseLoopPenalty
   });
 
   function computerBearMove() {
@@ -498,6 +538,7 @@ export function createGame(options = {}) {
     pendingComputerTurn = false;
     resetRecentPositions();
     resetRecentMoves();
+    resetRecentResponsePatterns();
     state = emptyState();
     setAiThinking(false);
     state.mode = mode;
@@ -529,6 +570,7 @@ export function createGame(options = {}) {
     state = safeState;
     resetRecentPositions();
     resetRecentMoves();
+    resetRecentResponsePatterns();
     rememberPosition();
   }
 

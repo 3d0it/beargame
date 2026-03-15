@@ -4,6 +4,10 @@ export const DIFFICULTY_CONFIG = {
   hard: { bearDepth: 8, hunterDepth: 5, setupDepth: 5, quiescenceDepth: 2, rolloutDepth: 5, rolloutWeight: 0.6, targetRating: 8 }
 };
 
+const CENTER_NODE = 18;
+const INNER_RING_NODES = new Set([16, 17, 19, 20]);
+const OUTER_GATEWAYS = new Set([2, 5, 8, 11]);
+
 export function createAiEngine({
   adjacency,
   maxBearMoves,
@@ -14,7 +18,8 @@ export function createAiEngine({
   getHunterLegalMoves,
   applyVirtualMove,
   repetitionPenalty,
-  moveBacktrackPenalty
+  moveBacktrackPenalty,
+  responseLoopPenalty
 }) {
   function hunterPressureProfile(local) {
     let trapReplies = 0;
@@ -31,6 +36,31 @@ export function createAiEngine({
     }
 
     return { trapReplies, squeezeReplies };
+  }
+
+  function centerEscapeProfile(local) {
+    const bearAtCenter = local.bear === CENTER_NODE;
+    const bearNearCenter = bearAtCenter || INNER_RING_NODES.has(local.bear);
+    const reachableOuterGateways = new Set();
+
+    for (const to of getBearLegalMoves(local)) {
+      for (const next of adjacency.get(to) ?? []) {
+        if (OUTER_GATEWAYS.has(next) && !local.hunters.includes(next)) {
+          reachableOuterGateways.add(next);
+        }
+      }
+    }
+
+    const openOuterGateways = [...OUTER_GATEWAYS].filter(
+      (nodeId) => !local.hunters.includes(nodeId) && local.bear !== nodeId
+    ).length;
+
+    return {
+      bearAtCenter,
+      bearNearCenter,
+      openOuterGateways,
+      reachableOuterGateways: reachableOuterGateways.size
+    };
   }
 
   function bearEscapeProfile(local) {
@@ -72,6 +102,8 @@ export function createAiEngine({
     const { trapReplies, squeezeReplies } = hunterPressureProfile(next);
     const { safeRoutes, trapRoutes, squeezeRoutes, frontierReach } = bearEscapeProfile(next);
     const immediateTraps = immediateTrapCount(next);
+    const centerBefore = centerEscapeProfile(local);
+    const centerAfter = centerEscapeProfile(next);
 
     if (sideToMove === 'bear') {
       return (
@@ -79,6 +111,8 @@ export function createAiEngine({
         frontierReach * 22 +
         reachable4 * 14 +
         mobility * 160 -
+        (centerAfter.bearAtCenter ? 140 : 0) -
+        (centerAfter.bearNearCenter ? centerAfter.reachableOuterGateways * 44 : 0) -
         trapReplies * 1500 -
         immediateTraps * 1700 -
         squeezeReplies * 340 -
@@ -94,7 +128,10 @@ export function createAiEngine({
       safeRoutes * 360 -
       reachable4 * 24 -
       mobility * 240 -
-      trapReplies * 60
+      trapReplies * 60 +
+      (centerBefore.reachableOuterGateways - centerAfter.reachableOuterGateways) * 220 +
+      (centerBefore.openOuterGateways - centerAfter.openOuterGateways) * 80 +
+      (centerAfter.bearAtCenter ? -120 : 0)
     );
   }
 
@@ -144,6 +181,7 @@ export function createAiEngine({
     ).length;
     const { trapReplies, squeezeReplies } = hunterPressureProfile(local);
     const { safeRoutes, trapRoutes, squeezeRoutes, frontierReach } = bearEscapeProfile(local);
+    const centerEscape = centerEscapeProfile(local);
     const mobilityDanger = mobility <= 1 ? 180 : mobility === 2 ? 80 : 0;
 
     const bearScore =
@@ -159,6 +197,8 @@ export function createAiEngine({
       squeezeReplies * 26 -
       trapRoutes * 120 -
       squeezeRoutes * 55 -
+      (centerEscape.bearAtCenter ? 110 : 0) -
+      (centerEscape.bearNearCenter ? centerEscape.reachableOuterGateways * 22 : 0) -
       mobilityDanger -
       centerDistance * 0.5 -
       hunterAdjacency * 32;
@@ -179,11 +219,13 @@ export function createAiEngine({
         evaluateState(stateA, perspective) +
         tacticalMoveScore(local, sideToMove, a) -
         repetitionPenalty(stateA) -
+        responseLoopPenalty(sideToMove, local, stateA) -
         moveBacktrackPenalty(sideToMove, a);
       const scoreB =
         evaluateState(stateB, perspective) +
         tacticalMoveScore(local, sideToMove, b) -
         repetitionPenalty(stateB) -
+        responseLoopPenalty(sideToMove, local, stateB) -
         moveBacktrackPenalty(sideToMove, b);
       return maximizing ? scoreB - scoreA : scoreA - scoreB;
     });
@@ -307,6 +349,7 @@ export function createAiEngine({
         greedyRolloutScore(simulated, perspective, rolloutDepth) +
         tacticalMoveScore(local, sideToMove, move) -
         repetitionPenalty(simulated) -
+        responseLoopPenalty(sideToMove, local, simulated) -
         moveBacktrackPenalty(sideToMove, move);
       if (score > bestScore) {
         bestScore = score;
@@ -380,6 +423,7 @@ export function createAiEngine({
         tacticalMoveScore(local, 'bear', { to }) +
         rolloutBonus -
         repetitionPenalty(simulated) -
+        responseLoopPenalty('bear', local, simulated) -
         moveBacktrackPenalty('bear', { to });
       if (score > bestScore) {
         bestScore = score;
@@ -443,6 +487,7 @@ export function createAiEngine({
         tacticalMoveScore(local, 'hunters', move) +
         rolloutBonus -
         repetitionPenalty(simulated) -
+        responseLoopPenalty('hunters', local, simulated) -
         moveBacktrackPenalty('hunters', move);
       if (score > bestScore) {
         bestScore = score;
