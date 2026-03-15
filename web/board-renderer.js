@@ -222,7 +222,8 @@ function createGroup(cls) {
 function createBearToken(x, y, thinking = false) {
   const g = createGroup('piece-group');
   if (thinking) {
-    g.appendChild(createCircle(x, y, 4.15, 'piece-thinking piece-thinking-bear'));
+    g.appendChild(createCircle(x, y, 4.55, 'piece-thinking-halo piece-thinking-halo-bear'));
+    g.appendChild(createCircle(x, y, 4.05, 'piece-thinking piece-thinking-bear'));
   }
   g.appendChild(createCircle(x, y, 3.2, 'piece piece-bear'));
   g.appendChild(createCircle(x, y + 0.45, 0.95, 'piece-mark-bear'));
@@ -238,7 +239,8 @@ function createHunterToken(x, y, selected, thinking = false) {
     g.appendChild(createCircle(x, y, 3.95, 'piece-selected'));
   }
   if (thinking) {
-    g.appendChild(createCircle(x, y, 4.15, 'piece-thinking piece-thinking-hunter'));
+    g.appendChild(createCircle(x, y, 4.55, 'piece-thinking-halo piece-thinking-halo-hunter'));
+    g.appendChild(createCircle(x, y, 4.05, 'piece-thinking piece-thinking-hunter'));
   }
   g.appendChild(createCircle(x, y, 3.2, 'piece piece-hunter'));
   g.appendChild(createLine(x - 1.45, y, x + 1.45, y, 'piece-mark-hunter'));

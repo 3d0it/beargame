@@ -720,16 +720,35 @@ h2 {
 
 .piece-thinking {
   fill: none;
-  stroke-width: 0.9;
+  stroke-width: 1.05;
+  vector-effect: non-scaling-stroke;
+  transform-box: fill-box;
+  transform-origin: center;
   animation: piece-thinking-pulse 1s ease-in-out infinite;
 }
 
+.piece-thinking-halo {
+  fill: none;
+  stroke-width: 1.7;
+  opacity: 0.28;
+  vector-effect: non-scaling-stroke;
+  animation: piece-thinking-halo-pulse 1s ease-in-out infinite;
+}
+
 .piece-thinking-bear {
-  stroke: rgba(155, 79, 63, 0.75);
+  stroke: rgba(155, 79, 63, 0.95);
 }
 
 .piece-thinking-hunter {
-  stroke: rgba(61, 96, 112, 0.8);
+  stroke: rgba(61, 96, 112, 0.96);
+}
+
+.piece-thinking-halo-bear {
+  stroke: rgba(155, 79, 63, 0.36);
+}
+
+.piece-thinking-halo-hunter {
+  stroke: rgba(61, 96, 112, 0.38);
 }
 
 .node-hit {
@@ -750,12 +769,24 @@ h2 {
 @keyframes piece-thinking-pulse {
   0%,
   100% {
-    opacity: 0.35;
-    transform: scale(0.98);
+    opacity: 0.55;
+    stroke-width: 0.96;
   }
   50% {
-    opacity: 0.95;
-    transform: scale(1.03);
+    opacity: 1;
+    stroke-width: 1.22;
+  }
+}
+
+@keyframes piece-thinking-halo-pulse {
+  0%,
+  100% {
+    opacity: 0.2;
+    stroke-width: 1.45;
+  }
+  50% {
+    opacity: 0.42;
+    stroke-width: 1.95;
   }
 }
 
