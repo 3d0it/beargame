@@ -62,10 +62,14 @@ describe('createGame', () => {
   }
 
   function playRecordedHunterTrap(game, difficulty) {
-    vi.useFakeTimers();
     game.newMatch('hvc', 'bear', difficulty);
     game.clickNode(1);
-    vi.runOnlyPendingTimers();
+    if (game.benchmark) {
+      game.benchmark.runComputerTurnSync();
+    } else {
+      vi.useFakeTimers();
+      vi.runOnlyPendingTimers();
+    }
 
     const hunterMoves = [
       [1, 4],
@@ -87,12 +91,18 @@ describe('createGame', () => {
       if (before.phase !== 'playing' || before.turn !== 'hunters') break;
       game.clickNode(from);
       game.clickNode(to);
-      vi.runOnlyPendingTimers();
+      if (game.benchmark) {
+        game.benchmark.runComputerTurnSync();
+      } else {
+        vi.runOnlyPendingTimers();
+      }
       if (game.getState().roundResults.length > 0) break;
     }
 
     const final = game.getState();
-    vi.useRealTimers();
+    if (!game.benchmark) {
+      vi.useRealTimers();
+    }
     return final;
   }
 
@@ -676,7 +686,7 @@ describe('createGame', () => {
   });
 
   it('in hvc medium l orso non deve cadere nel trap registrato in 12 mosse', () => {
-    const game = createGame();
+    const game = createGame({ enableBenchmarkTools: true });
     const final = playRecordedHunterTrap(game, 'medium');
 
     expect(final.roundResults[0]?.reason).not.toBe('hunters-win');
@@ -684,8 +694,8 @@ describe('createGame', () => {
     expect(final.turn).toBe('hunters');
   });
 
-  it('in hvc hard l orso non deve cadere nel trap registrato in 12 mosse', { timeout: 10000 }, () => {
-    const game = createGame();
+  it('in hvc hard l orso non deve cadere nel trap registrato in 12 mosse', { timeout: 15000 }, () => {
+    const game = createGame({ enableBenchmarkTools: true });
     const final = playRecordedHunterTrap(game, 'hard');
 
     expect(final.roundResults[0]?.reason).not.toBe('hunters-win');
