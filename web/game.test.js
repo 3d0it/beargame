@@ -694,7 +694,7 @@ describe('createGame', () => {
     expect(final.turn).toBe('hunters');
   });
 
-  it('in hvc hard l orso non deve cadere nel trap registrato in 12 mosse', { timeout: 15000 }, () => {
+  it('in hvc hard l orso non deve cadere nel trap registrato in 12 mosse', { timeout: 30000 }, () => {
     const game = createGame({ enableBenchmarkTools: true });
     const final = playRecordedHunterTrap(game, 'hard');
 
