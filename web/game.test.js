@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { controllerFor, createGame, summarizeMatch } from './game.js';
+import { createGame, summarizeMatch } from './game.js';
 
 function playDrawRound(game, { lunetteNode = 8, bearStart = 18 } = {}) {
   let state = game.getState();
@@ -34,20 +34,6 @@ function playDrawRound(game, { lunetteNode = 8, bearStart = 18 } = {}) {
   }
 }
 
-describe('controllerFor', () => {
-  it('in hvh lascia sempre il controllo all umano', () => {
-    expect(controllerFor({ mode: 'hvh', computerSide: 'bear', round: 1, side: 'bear' })).toBe('human');
-    expect(controllerFor({ mode: 'hvh', computerSide: 'hunters', round: 2, side: 'hunters' })).toBe('human');
-  });
-
-  it('in hvc scambia i ruoli nella seconda manche', () => {
-    expect(controllerFor({ mode: 'hvc', computerSide: 'bear', round: 1, side: 'bear' })).toBe('computer');
-    expect(controllerFor({ mode: 'hvc', computerSide: 'bear', round: 1, side: 'hunters' })).toBe('human');
-    expect(controllerFor({ mode: 'hvc', computerSide: 'bear', round: 2, side: 'bear' })).toBe('human');
-    expect(controllerFor({ mode: 'hvc', computerSide: 'bear', round: 2, side: 'hunters' })).toBe('computer');
-  });
-});
-
 describe('createGame', () => {
   function movedHunterIndex(before, after) {
     for (let i = 0; i < before.hunters.length; i += 1) {
@@ -73,6 +59,41 @@ describe('createGame', () => {
 
   function boardSignature(state) {
     return `${state.turn}|${state.bear}|${[...state.hunters].sort((a, b) => a - b).join(',')}`;
+  }
+
+  function playRecordedHunterTrap(game, difficulty) {
+    vi.useFakeTimers();
+    game.newMatch('hvc', 'bear', difficulty);
+    game.clickNode(1);
+    vi.runOnlyPendingTimers();
+
+    const hunterMoves = [
+      [1, 4],
+      [2, 16],
+      [3, 7],
+      [4, 14],
+      [16, 18],
+      [7, 15],
+      [18, 20],
+      [14, 6],
+      [15, 9],
+      [20, 11],
+      [9, 12],
+      [6, 10]
+    ];
+
+    for (const [from, to] of hunterMoves) {
+      const before = game.getState();
+      if (before.phase !== 'playing' || before.turn !== 'hunters') break;
+      game.clickNode(from);
+      game.clickNode(to);
+      vi.runOnlyPendingTimers();
+      if (game.getState().roundResults.length > 0) break;
+    }
+
+    const final = game.getState();
+    vi.useRealTimers();
+    return final;
   }
 
   it('inizializza una nuova partita con setup corretto', () => {
@@ -652,6 +673,24 @@ describe('createGame', () => {
     expect(state.bearMoves).toBe(1);
 
     vi.useRealTimers();
+  });
+
+  it('in hvc medium l orso non deve cadere nel trap registrato in 12 mosse', () => {
+    const game = createGame();
+    const final = playRecordedHunterTrap(game, 'medium');
+
+    expect(final.roundResults[0]?.reason).not.toBe('hunters-win');
+    expect(final.phase).toBe('playing');
+    expect(final.turn).toBe('hunters');
+  });
+
+  it('in hvc hard l orso non deve cadere nel trap registrato in 12 mosse', { timeout: 10000 }, () => {
+    const game = createGame();
+    const final = playRecordedHunterTrap(game, 'hard');
+
+    expect(final.roundResults[0]?.reason).not.toBe('hunters-win');
+    expect(final.phase).toBe('playing');
+    expect(final.turn).toBe('hunters');
   });
 
   it('espone le tre difficolta disponibili', () => {

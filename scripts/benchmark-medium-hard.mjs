@@ -6,14 +6,12 @@ import {
 import {
   applyMove,
   chooseGreedyMove,
-  cloneState,
-  getBearLegalMoves,
-  getHunterLegalMoves,
   isBearTrapped,
   legalMoves,
   moveLabel,
   rolloutScore
 } from './ai-eval-helpers.mjs';
+import { pathToFileURL } from 'node:url';
 
 const SAMPLE_COUNT = 16;
 const BASE_OPENING_PLIES = 5;
@@ -137,44 +135,57 @@ function changedPieces(before, after) {
   return 'nessuna mossa';
 }
 
-const positions = generateSamplePositions();
-const rows = positions.map((position) => ({
-  position,
-  medium: runDifficultyOnPosition(position, 'medium'),
-  hard: runDifficultyOnPosition(position, 'hard')
-}));
+export function runMediumHardBenchmark() {
+  const positions = generateSamplePositions();
+  const rows = positions.map((position) => ({
+    position,
+    medium: runDifficultyOnPosition(position, 'medium'),
+    hard: runDifficultyOnPosition(position, 'hard')
+  }));
 
-const summary = rows.reduce(
-  (acc, row) => {
-    acc.mediumScore += row.medium.quality;
-    acc.hardScore += row.hard.quality;
-    acc.mediumTime += row.medium.elapsedMs;
-    acc.hardTime += row.hard.elapsedMs;
-    if (row.hard.quality > row.medium.quality) acc.hardBetter += 1;
-    else if (row.medium.quality > row.hard.quality) acc.mediumBetter += 1;
-    else acc.equal += 1;
-    return acc;
-  },
-  { mediumScore: 0, hardScore: 0, mediumTime: 0, hardTime: 0, hardBetter: 0, mediumBetter: 0, equal: 0 }
-);
-
-summary.mediumScore = Number((summary.mediumScore / rows.length).toFixed(2));
-summary.hardScore = Number((summary.hardScore / rows.length).toFixed(2));
-summary.mediumTime = Number((summary.mediumTime / rows.length).toFixed(1));
-summary.hardTime = Number((summary.hardTime / rows.length).toFixed(1));
-
-console.log('Medium vs Hard Benchmark');
-console.log(`positions: ${rows.length}`);
-console.log(`medium=${summary.mediumScore}/10 | hard=${summary.hardScore}/10`);
-console.log(`hard better on ${summary.hardBetter}/${rows.length} | medium better on ${summary.mediumBetter}/${rows.length} | equal ${summary.equal}/${rows.length}`);
-console.log(`avg decision time: medium ${summary.mediumTime}ms | hard ${summary.hardTime}ms`);
-
-for (const row of rows) {
-  console.log(`\n${row.position.id} (${row.position.state.turn})`);
-  console.log(
-    `  medium: ${row.medium.chosen} | quality=${row.medium.quality}/10 | rank=${row.medium.rank}/${row.medium.optionCount} | time=${row.medium.elapsedMs.toFixed(1)}ms`
+  const summary = rows.reduce(
+    (acc, row) => {
+      acc.mediumScore += row.medium.quality;
+      acc.hardScore += row.hard.quality;
+      acc.mediumTime += row.medium.elapsedMs;
+      acc.hardTime += row.hard.elapsedMs;
+      if (row.hard.quality > row.medium.quality) acc.hardBetter += 1;
+      else if (row.medium.quality > row.hard.quality) acc.mediumBetter += 1;
+      else acc.equal += 1;
+      return acc;
+    },
+    { mediumScore: 0, hardScore: 0, mediumTime: 0, hardTime: 0, hardBetter: 0, mediumBetter: 0, equal: 0 }
   );
+
+  summary.mediumScore = Number((summary.mediumScore / rows.length).toFixed(2));
+  summary.hardScore = Number((summary.hardScore / rows.length).toFixed(2));
+  summary.mediumTime = Number((summary.mediumTime / rows.length).toFixed(1));
+  summary.hardTime = Number((summary.hardTime / rows.length).toFixed(1));
+
+  return { rows, summary };
+}
+
+export function printMediumHardBenchmark(result) {
+  const { rows, summary } = result;
+  console.log('Medium vs Hard Benchmark');
+  console.log(`positions: ${rows.length}`);
+  console.log(`medium=${summary.mediumScore}/10 | hard=${summary.hardScore}/10`);
   console.log(
-    `  hard: ${row.hard.chosen} | quality=${row.hard.quality}/10 | rank=${row.hard.rank}/${row.hard.optionCount} | time=${row.hard.elapsedMs.toFixed(1)}ms`
+    `hard better on ${summary.hardBetter}/${rows.length} | medium better on ${summary.mediumBetter}/${rows.length} | equal ${summary.equal}/${rows.length}`
   );
+  console.log(`avg decision time: medium ${summary.mediumTime}ms | hard ${summary.hardTime}ms`);
+
+  for (const row of rows) {
+    console.log(`\n${row.position.id} (${row.position.state.turn})`);
+    console.log(
+      `  medium: ${row.medium.chosen} | quality=${row.medium.quality}/10 | rank=${row.medium.rank}/${row.medium.optionCount} | time=${row.medium.elapsedMs.toFixed(1)}ms`
+    );
+    console.log(
+      `  hard: ${row.hard.chosen} | quality=${row.hard.quality}/10 | rank=${row.hard.rank}/${row.hard.optionCount} | time=${row.hard.elapsedMs.toFixed(1)}ms`
+    );
+  }
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  printMediumHardBenchmark(runMediumHardBenchmark());
 }

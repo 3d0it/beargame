@@ -132,9 +132,7 @@ function setupNavigator(registerMock) {
   Object.defineProperty(globalThis, 'navigator', {
     configurable: true,
     value: {
-      serviceWorker: {
-        register: registerMock
-      }
+      serviceWorker: registerMock ? { register: registerMock } : undefined
     }
   });
 }
@@ -310,6 +308,8 @@ describe('main.js', () => {
       round: 2,
       turn: 'bear',
       bearMoves: 12,
+      turnHintCode: 'bear-turn',
+      validationErrorCode: null,
       message: 'Turno dell Orso: seleziona una casella adiacente libera.'
     };
 
@@ -324,7 +324,7 @@ describe('main.js', () => {
     expect(elements.matchResultLabel.textContent).toContain('Finale: in attesa');
   });
 
-  it('logga warning se la registrazione service worker fallisce', async () => {
+  it('non registra un service worker in bootstrap', async () => {
     const state = {
       current: {
         round: 1,
@@ -334,19 +334,14 @@ describe('main.js', () => {
       }
     };
 
-    const swError = new Error('sw failure');
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const registerMock = vi.fn(() => Promise.resolve());
 
     await importMainWithMocks({
-      registerMock: vi.fn(() => Promise.reject(swError)),
+      registerMock,
       state
     });
 
-    await Promise.resolve();
-
-    expect(warnSpy).toHaveBeenCalled();
-    expect(warnSpy.mock.calls[0][0]).toContain('[sw] registration failed');
-    expect(warnSpy.mock.calls[0][1]).toBe(swError);
+    expect(registerMock).not.toHaveBeenCalled();
   });
 
   it('mostra un messaggio esplicito quando l IA sta pensando', async () => {

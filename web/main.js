@@ -1,10 +1,9 @@
 import { MAX_BEAR_MOVES, createGame } from './game.js';
 import { createBoardRenderer } from './board-renderer.js';
+import { formatStatusMessage } from './game-state-view.js';
 
-registerServiceWorker();
 const SETTINGS_STORAGE_KEY = 'beargame.settings.v1';
 const FIRST_MATCH_TUTORIAL_KEY = 'beargame.first-match-tutorial.v1';
-const FINAL_STATUS_HINT = 'Partita conclusa.';
 const FIRST_MATCH_TUTORIAL_STEPS = [
   "Scopo: i Cacciatori vincono se bloccano l'Orso; l'Orso fa patta se resta libero per 40 mosse.",
   'Setup Cacciatori: all inizio scegli una lunetta, cioè una delle 4 terne di posizioni iniziali. Sul tavoliere le lunette valide sono evidenziate.',
@@ -49,14 +48,6 @@ let selectedMode = 'hvh';
 let selectedComputerSide = 'bear';
 let selectedDifficulty = 'easy';
 loadSavedSettings();
-
-function registerServiceWorker() {
-  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
-
-  navigator.serviceWorker.register('./sw.js').catch((error) => {
-    console.warn('[sw] registration failed:', error);
-  });
-}
 
 function requiredElement(id) {
   const element = document.getElementById(id);
@@ -263,7 +254,7 @@ function updateStatus() {
   roundLabel.textContent = `Manche ${state.round}/2`;
   turnLabel.textContent = state.turn ? (state.turn === 'bear' ? 'Orso' : 'Cacciatori') : '-';
   movesLabel.textContent = `Mosse ${state.bearMoves}/${MAX_BEAR_MOVES}`;
-  messageLabel.textContent = compactStatusMessage(state);
+  messageLabel.textContent = formatStatusMessage(state);
 
   const roundResults = state.roundResults ?? [];
   const firstRound = roundResults[0] ?? null;
@@ -336,34 +327,6 @@ function describeMatchResult(state) {
     return `Finale: Vince ${winner} (${winnerRound.immobilizationMoves}), ${loser} ${loserRound.immobilizationMoves}`;
   }
   return `Finale: Vince ${winner} (${winnerRound.immobilizationMoves}), ${loser} >${MAX_BEAR_MOVES}`;
-}
-
-function compactStatusMessage(state) {
-  if (state.phase === 'match-over' || state.phase === 'tie-after-two-rounds') {
-    return FINAL_STATUS_HINT;
-  }
-  if (state.aiThinking) {
-    return state.aiThinkingSide === 'hunters' ? 'IA sta pensando per i Cacciatori...' : "IA sta pensando per l'Orso...";
-  }
-  if (typeof state.message === 'string') {
-    if (state.message.includes("Turno dell'Orso") || state.message.includes('Turno dell Orso')) {
-      return 'Orso: scegli una casella adiacente libera.';
-    }
-    if (state.message.includes('devi prima selezionare un cacciatore')) {
-      return 'Seleziona prima un cacciatore.';
-    }
-  }
-  if (state.phase === 'setup-hunters') return 'Cacciatori: scegli una lunetta.';
-  if (state.phase === 'setup-bear') return 'Orso: scegli la posizione iniziale.';
-  if (state.phase === 'playing' && state.turn === 'bear') {
-    return 'Orso: scegli una casella adiacente libera.';
-  }
-  if (state.phase === 'playing' && state.turn === 'hunters') {
-    if (state.selectedHunter !== null) return 'Cacciatore selezionato: scegli una casella libera.';
-    if (state.message?.includes('Mossa non valida')) return 'Mossa non valida: scegli una casella libera.';
-    return 'Cacciatori: seleziona pedina e destinazione adiacente.';
-  }
-  return state.message;
 }
 
 function setTextAndTitle(element, text) {

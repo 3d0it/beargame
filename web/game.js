@@ -11,37 +11,31 @@ import {
   nodeDistance,
   reachableCountForState
 } from './game-state-helpers.js';
-import { createAiEngine, DIFFICULTY_CONFIG } from './game-ai.js';
-import {
-  applyFinishedMatchState,
-  createEmptyGameState,
-  createRoundResult,
-  resetStateForNextRound,
-  summarizeMatch
-} from './game-match.js';
+import { createAiEngine } from './game-ai.js';
+import { DIFFICULTY_CONFIG, AI_HEURISTIC_PROFILE } from './game-ai-profile.js';
+import { createEmptyGameState, summarizeMatch } from './game-match.js';
+import { controllerFor, createMatchOrchestrator } from './game-match-orchestrator.js';
+import { createRulesEngine } from './game-rules-engine.js';
+import { TURN_HINT_CODES, VALIDATION_ERROR_CODES } from './game-state-codes.js';
+import { createAiTurnScheduler } from './game-turn-scheduler.js';
+
 export { BOARD_NODES } from './game-state-helpers.js';
 export { summarizeMatch } from './game-match.js';
+export { controllerFor } from './game-match-orchestrator.js';
+
 const GAME_DIFFICULTIES = new Set(['easy', 'medium', 'hard']);
 const HUNTERS_SETUP_HINT = 'I Cacciatori devono scegliere una lunetta iniziale.';
 const BEAR_TURN_HINT = "Turno dell'Orso: seleziona una casella adiacente libera.";
 const HUNTERS_TURN_HINT = 'Turno dei Cacciatori: seleziona un cacciatore, poi una casella adiacente libera.';
 const HUNTER_SELECTED_HINT = 'Cacciatore selezionato: scegli una casella adiacente libera.';
 const HUNTER_INVALID_MOVE_HINT = 'Mossa non valida: scegli una casella adiacente libera.';
+
 const lunetteByNode = new Map();
 for (const lunette of HUNTER_LUNETTES) {
   for (const nodeId of lunette) lunetteByNode.set(nodeId, lunette);
 }
-export const MAX_BEAR_MOVES = 40;
 
-export function controllerFor({ mode, computerSide, round, side }) {
-  if (mode === 'hvh') return 'human';
-  const computerControlsBear =
-    round % 2 === 1 ? computerSide === 'bear' : computerSide !== 'bear';
-  if (side === 'bear') {
-    return computerControlsBear ? 'computer' : 'human';
-  }
-  return computerControlsBear ? 'human' : 'computer';
-}
+export const MAX_BEAR_MOVES = 40;
 
 const NODE_IDS = new Set(BOARD_NODES.map((node) => node.id));
 
@@ -51,10 +45,8 @@ function emptyState() {
 
 export function createGame(options = {}) {
   const enableBenchmarkTools = options.enableBenchmarkTools === true;
-  let state = emptyState();
+  const stateRef = { current: emptyState() };
   let onChange = null;
-  let matchEpoch = 0;
-  let pendingComputerTurn = false;
   let recentPositionHashes = [];
   let recentMoves = [];
   let recentResponsePatterns = [];
@@ -63,15 +55,7 @@ export function createGame(options = {}) {
     onChange?.();
   }
 
-  function captureEpoch() {
-    return matchEpoch;
-  }
-
-  function isCurrentEpoch(epoch) {
-    return epoch === matchEpoch;
-  }
-
-  function positionHash(local = state) {
+  function positionHash(local = stateRef.current) {
     const hunters = [...local.hunters].sort((a, b) => a - b).join(',');
     return `${local.phase}|${local.turn}|${local.bear}|${hunters}`;
   }
@@ -88,7 +72,7 @@ export function createGame(options = {}) {
     recentResponsePatterns = [];
   }
 
-  function rememberPosition(local = state) {
+  function rememberPosition(local = stateRef.current) {
     recentPositionHashes.push(positionHash(local));
     if (recentPositionHashes.length > 12) {
       recentPositionHashes = recentPositionHashes.slice(-12);
@@ -120,7 +104,7 @@ export function createGame(options = {}) {
     for (let i = recentPositionHashes.length - 1; i >= 0; i -= 1) {
       if (recentPositionHashes[i] !== nextHash) continue;
       const recency = recentPositionHashes.length - i;
-      penalty += Math.max(0, 42 - recency * 6);
+      penalty += Math.max(0, AI_HEURISTIC_PROFILE.antiLoop.repetitionBase - recency * AI_HEURISTIC_PROFILE.antiLoop.repetitionRecencyStep);
     }
 
     return penalty;
@@ -128,6 +112,8 @@ export function createGame(options = {}) {
 
   function moveBacktrackPenalty(side, move) {
     if (!move || typeof move.to !== 'number') return 0;
+
+    const state = stateRef.current;
     const from = side === 'bear' ? state.bear : move.from;
     if (typeof from !== 'number') return 0;
 
@@ -137,7 +123,10 @@ export function createGame(options = {}) {
       if (previous.side !== side) continue;
       if (previous.from !== move.to || previous.to !== from) continue;
       const recency = recentMoves.length - i;
-      penalty += Math.max(0, 56 - recency * 10);
+      penalty += Math.max(
+        0,
+        AI_HEURISTIC_PROFILE.antiLoop.moveBacktrackBase - recency * AI_HEURISTIC_PROFILE.antiLoop.moveBacktrackRecencyStep
+      );
       break;
     }
 
@@ -146,6 +135,7 @@ export function createGame(options = {}) {
 
   function responseLoopPenalty(side, before, after) {
     if (!before || !after) return 0;
+
     const beforeHash = positionHash(before);
     const afterHash = positionHash(after);
     let penalty = 0;
@@ -155,7 +145,10 @@ export function createGame(options = {}) {
       if (previous.side !== side) continue;
       if (previous.before !== beforeHash || previous.after !== afterHash) continue;
       const recency = recentResponsePatterns.length - i;
-      penalty += Math.max(0, 960 - recency * 90);
+      penalty += Math.max(
+        0,
+        AI_HEURISTIC_PROFILE.antiLoop.responseLoopBase - recency * AI_HEURISTIC_PROFILE.antiLoop.responseLoopRecencyStep
+      );
       break;
     }
 
@@ -170,120 +163,32 @@ export function createGame(options = {}) {
     return Number.isInteger(nodeId) && NODE_IDS.has(nodeId);
   }
 
-  function isOccupied(nodeId, local = state) {
+  function isOccupied(nodeId, local = stateRef.current) {
     return isOccupiedNode(local, nodeId);
-  }
-
-  function canMove(from, to, local = state) {
-    if (!isValidNodeId(from) || !isValidNodeId(to)) return false;
-    return adjacency.get(from).includes(to) && !isOccupied(to, local);
-  }
-
-  function getBearLegalMoves(local = state) {
-    if (!isValidNodeId(local.bear)) return [];
-    return getBearLegalMovesForState(local);
-  }
-
-  function getHunterLegalMoves(local = state) {
-    return getHunterLegalMovesForState(local);
-  }
-
-  function isBearTrapped(local = state) {
-    return local.bear !== null && getBearLegalMoves(local).length === 0;
-  }
-
-  function finishRound(reason) {
-    const roundResult = createRoundResult(state, reason);
-    state.roundResults.push(roundResult);
-    state.lastRoundResult = roundResult;
-
-    if (state.round >= 2) {
-      const summary = summarizeMatch(state.roundResults);
-      applyFinishedMatchState(state, summary);
-      return;
-    }
-
-    startNextRound();
-  }
-
-  function startNextRound() {
-    resetStateForNextRound(state, HUNTERS_SETUP_HINT);
-    resetRecentPositions();
-    resetRecentMoves();
-    resetRecentResponsePatterns();
-  }
-
-  function setAiThinking(thinking, side = null) {
-    state.aiThinking = thinking;
-    state.aiThinkingSide = thinking ? side : null;
-  }
-
-  function applyBearMove(to) {
-    if (!canMove(state.bear, to)) return false;
-    const before = cloneState(state);
-    const from = state.bear;
-    state.bear = to;
-    state.bearMoves += 1;
-    if (isBearTrapped()) {
-      state.message = `Orso bloccato in ${state.bearMoves} mosse.`;
-      finishRound('hunters-win');
-      return true;
-    }
-    if (state.bearMoves >= MAX_BEAR_MOVES) {
-      state.message = "L'Orso non è stato immobilizzato entro 40 mosse: manche patta.";
-      finishRound('draw');
-      return true;
-    }
-    state.turn = 'hunters';
-    state.message = HUNTERS_TURN_HINT;
-    rememberMove('bear', from, to);
-    rememberPosition();
-    rememberResponsePattern('bear', before, state);
-    return true;
-  }
-
-  function applyHunterMove(hunterIndex, to) {
-    if (!Number.isInteger(hunterIndex) || hunterIndex < 0 || hunterIndex >= state.hunters.length) {
-      return false;
-    }
-    const before = cloneState(state);
-    const from = state.hunters[hunterIndex];
-    if (!canMove(from, to)) return false;
-    state.hunters[hunterIndex] = to;
-    state.selectedHunter = null;
-
-    if (isBearTrapped()) {
-      state.message = `Orso bloccato in ${state.bearMoves} mosse.`;
-      finishRound('hunters-win');
-      return true;
-    }
-
-    state.turn = 'bear';
-    state.message = BEAR_TURN_HINT;
-    rememberMove('hunters', from, to);
-    rememberPosition();
-    rememberResponsePattern('hunters', before, state);
-    return true;
-  }
-
-  function currentControllerFor(side) {
-    return controllerFor({
-      mode: state.mode,
-      computerSide: state.computerSide,
-      round: state.round,
-      side
-    });
   }
 
   function cloneState(local) {
     return cloneGameState(local);
   }
 
-  function getDifficultyConfig() {
-    return DIFFICULTY_CONFIG[state.difficulty] ?? DIFFICULTY_CONFIG.easy;
+  function getBearLegalMoves(local = stateRef.current) {
+    if (!isValidNodeId(local.bear)) return [];
+    return getBearLegalMovesForState(local);
   }
 
-  function getValidBearStartPositions(local = state) {
+  function getHunterLegalMoves(local = stateRef.current) {
+    return getHunterLegalMovesForState(local);
+  }
+
+  function isBearTrapped(local = stateRef.current) {
+    return local.bear !== null && getBearLegalMoves(local).length === 0;
+  }
+
+  function getDifficultyConfig() {
+    return DIFFICULTY_CONFIG[stateRef.current.difficulty] ?? DIFFICULTY_CONFIG.easy;
+  }
+
+  function getValidBearStartPositions(local = stateRef.current) {
     const freeNodes = BOARD_NODES.map((node) => node.id).filter((nodeId) => !isOccupied(nodeId, local));
     return freeNodes.filter((nodeId) => {
       const simulated = cloneState(local);
@@ -295,6 +200,46 @@ export function createGame(options = {}) {
   function reachableCount(local, start, maxDepth) {
     return reachableCountForState(local, start, maxDepth);
   }
+
+  function setAiThinking(thinking, side = null) {
+    const state = stateRef.current;
+    state.aiThinking = thinking;
+    state.aiThinkingSide = thinking ? side : null;
+  }
+
+  const match = createMatchOrchestrator({
+    stateRef,
+    createEmptyState: emptyState,
+    resolveDifficulty,
+    setupMessage: HUNTERS_SETUP_HINT,
+    emitChange,
+    resetRecentPositions,
+    resetRecentMoves,
+    resetRecentResponsePatterns,
+    rememberPosition,
+    setAiThinking
+  });
+
+  const rules = createRulesEngine({
+    stateRef,
+    adjacency,
+    cloneState,
+    isValidNodeId,
+    isOccupied,
+    getBearLegalMoves,
+    getValidBearStartPositions,
+    isBearTrapped,
+    rememberMove,
+    rememberPosition,
+    rememberResponsePattern,
+    finishRound: match.finishRound,
+    maxBearMoves: MAX_BEAR_MOVES,
+    hints: {
+      bearTurn: BEAR_TURN_HINT,
+      huntersTurn: HUNTERS_TURN_HINT
+    }
+  });
+
   const ai = createAiEngine({
     adjacency,
     maxBearMoves: MAX_BEAR_MOVES,
@@ -310,38 +255,25 @@ export function createGame(options = {}) {
   });
 
   function computerBearMove() {
+    const state = stateRef.current;
     const bestMove = ai.chooseBearMove(state, state.difficulty, getDifficultyConfig());
     if (bestMove === null) return;
-    applyBearMove(bestMove);
+    rules.applyBearMove(bestMove);
   }
 
   function computerHuntersMove() {
+    const state = stateRef.current;
     const best = ai.chooseHunterMove(state, state.difficulty, getDifficultyConfig());
     if (!best) return;
-    applyHunterMove(best.hunterIndex, best.to);
-  }
-
-  function chooseHuntersLunette(lunette) {
-    state.hunters = [...lunette];
-    state.selectedHunter = null;
-    const validBearStarts = getValidBearStartPositions();
-    if (validBearStarts.length === 0) {
-      state.message = 'Orso bloccato in 0 mosse.';
-      finishRound('hunters-win');
-      return;
-    }
-
-    state.phase = 'setup-bear';
-    state.turn = 'bear';
-    state.message = "L'Orso sceglie una posizione iniziale.";
-    rememberPosition();
+    rules.applyHunterMove(best.hunterIndex, best.to);
   }
 
   function scoreLunette(lunette) {
+    const state = stateRef.current;
     return ai.scoreLunette(state, lunette, state.difficulty, getDifficultyConfig(), BOARD_NODES);
   }
 
-  function isSymmetricOpeningSetup(local = state) {
+  function isSymmetricOpeningSetup(local = stateRef.current) {
     return (
       local.phase === 'setup-hunters' &&
       local.bear === null &&
@@ -352,9 +284,8 @@ export function createGame(options = {}) {
   }
 
   function computerChooseHuntersLunette() {
-    // On an empty board all opening lunettes are rotationally equivalent.
     if (isSymmetricOpeningSetup()) {
-      chooseHuntersLunette(HUNTER_LUNETTES[0]);
+      rules.chooseHuntersLunette(HUNTER_LUNETTES[0]);
       return;
     }
 
@@ -369,107 +300,102 @@ export function createGame(options = {}) {
       }
     }
 
-    chooseHuntersLunette(bestLunette);
+    rules.chooseHuntersLunette(bestLunette);
   }
 
   function chooseBearStartPosition() {
+    const state = stateRef.current;
     const free = getValidBearStartPositions();
     return ai.chooseBearStartPosition(state, state.difficulty, getDifficultyConfig(), free);
   }
 
-  function scheduleComputerTurn(action, side) {
-    if (pendingComputerTurn) return;
-    pendingComputerTurn = true;
-    setAiThinking(true, side);
-    emitChange();
-    const epoch = captureEpoch();
-    setTimeout(() => {
-      pendingComputerTurn = false;
-      setAiThinking(false);
-      if (!isCurrentEpoch(epoch)) return;
-      action();
-      if (!isCurrentEpoch(epoch)) return;
-      emitChange();
-      maybeComputerTurn();
-    }, 250);
-  }
+  const scheduler = createAiTurnScheduler({
+    emitChange,
+    setAiThinking,
+    captureEpoch: match.captureEpoch,
+    isCurrentEpoch: match.isCurrentEpoch
+  });
 
   function maybeComputerTurn() {
+    const state = stateRef.current;
     if (state.phase !== 'playing' && state.phase !== 'setup-bear' && state.phase !== 'setup-hunters') return;
 
-    if (state.phase === 'setup-hunters' && currentControllerFor('hunters') === 'computer') {
-      scheduleComputerTurn(() => {
+    if (state.phase === 'setup-hunters' && match.currentControllerFor('hunters') === 'computer') {
+      scheduler.schedule(() => {
         computerChooseHuntersLunette();
+        maybeComputerTurn();
       }, 'hunters');
       return;
     }
 
-    if (state.phase === 'setup-bear' && currentControllerFor('bear') === 'computer') {
+    if (state.phase === 'setup-bear' && match.currentControllerFor('bear') === 'computer') {
       const chosen = chooseBearStartPosition();
       if (chosen === null) {
         state.message = 'Orso bloccato in 0 mosse.';
-        finishRound('hunters-win');
+        state.turnHintCode = TURN_HINT_CODES.MATCH_OVER;
+        state.validationErrorCode = VALIDATION_ERROR_CODES.NONE;
+        match.finishRound('hunters-win');
         emitChange();
         return;
       }
-      state.bear = chosen;
-      state.phase = 'playing';
-      state.turn = 'bear';
-      state.message = BEAR_TURN_HINT;
-      rememberPosition();
+
+      rules.setBearStartPosition(chosen);
       emitChange();
-      scheduleComputerTurn(() => {
+      scheduler.schedule(() => {
         computerBearMove();
+        maybeComputerTurn();
       }, 'bear');
       return;
     }
 
     if (state.phase !== 'playing') return;
 
-    if (state.turn === 'bear' && currentControllerFor('bear') === 'computer') {
-      scheduleComputerTurn(() => {
+    if (state.turn === 'bear' && match.currentControllerFor('bear') === 'computer') {
+      scheduler.schedule(() => {
         computerBearMove();
+        maybeComputerTurn();
       }, 'bear');
       return;
     }
 
-    if (state.turn === 'hunters' && currentControllerFor('hunters') === 'computer') {
-      scheduleComputerTurn(() => {
+    if (state.turn === 'hunters' && match.currentControllerFor('hunters') === 'computer') {
+      scheduler.schedule(() => {
         computerHuntersMove();
+        maybeComputerTurn();
       }, 'hunters');
     }
   }
 
   function runComputerTurnSync() {
-    if (state.phase === 'setup-hunters' && currentControllerFor('hunters') === 'computer') {
+    const state = stateRef.current;
+
+    if (state.phase === 'setup-hunters' && match.currentControllerFor('hunters') === 'computer') {
       computerChooseHuntersLunette();
       return true;
     }
 
-    if (state.phase === 'setup-bear' && currentControllerFor('bear') === 'computer') {
+    if (state.phase === 'setup-bear' && match.currentControllerFor('bear') === 'computer') {
       const chosen = chooseBearStartPosition();
       if (chosen === null) {
         state.message = 'Orso bloccato in 0 mosse.';
-        finishRound('hunters-win');
+        state.turnHintCode = TURN_HINT_CODES.MATCH_OVER;
+        state.validationErrorCode = VALIDATION_ERROR_CODES.NONE;
+        match.finishRound('hunters-win');
         return true;
       }
-      state.bear = chosen;
-      state.phase = 'playing';
-      state.turn = 'bear';
-      state.message = BEAR_TURN_HINT;
-      rememberPosition();
+      rules.setBearStartPosition(chosen);
       computerBearMove();
       return true;
     }
 
     if (state.phase !== 'playing') return false;
 
-    if (state.turn === 'bear' && currentControllerFor('bear') === 'computer') {
+    if (state.turn === 'bear' && match.currentControllerFor('bear') === 'computer') {
       computerBearMove();
       return true;
     }
 
-    if (state.turn === 'hunters' && currentControllerFor('hunters') === 'computer') {
+    if (state.turn === 'hunters' && match.currentControllerFor('hunters') === 'computer') {
       computerHuntersMove();
       return true;
     }
@@ -478,137 +404,92 @@ export function createGame(options = {}) {
   }
 
   function clickNode(nodeId) {
+    const state = stateRef.current;
     if (!isValidNodeId(nodeId)) return;
     if (state.phase === 'match-over' || state.phase === 'tie-after-two-rounds') return;
 
     if (state.phase === 'setup-hunters') {
-      if (currentControllerFor('hunters') === 'computer') return;
+      if (match.currentControllerFor('hunters') === 'computer') return;
       const lunette = lunetteByNode.get(nodeId);
       if (!lunette) return;
-      chooseHuntersLunette(lunette);
+      rules.chooseHuntersLunette(lunette);
       emitChange();
       maybeComputerTurn();
       return;
     }
 
     if (state.phase === 'setup-bear') {
-      if (currentControllerFor('bear') === 'computer') return;
+      if (match.currentControllerFor('bear') === 'computer') return;
       if (isOccupied(nodeId)) return;
       if (!getValidBearStartPositions().includes(nodeId)) {
         state.message = "Posizione iniziale non valida: l'Orso deve avere almeno una mossa disponibile.";
+        state.turnHintCode = TURN_HINT_CODES.BEAR_SETUP;
+        state.validationErrorCode = VALIDATION_ERROR_CODES.BEAR_INVALID_START;
         emitChange();
         return;
       }
-      state.bear = nodeId;
-      state.phase = 'playing';
-      state.turn = 'bear';
-      state.message = BEAR_TURN_HINT;
-      rememberPosition();
+      rules.setBearStartPosition(nodeId);
       emitChange();
       maybeComputerTurn();
       return;
     }
 
     if (state.turn === 'bear') {
-      if (currentControllerFor('bear') === 'computer') return;
-      const moved = applyBearMove(nodeId);
+      if (match.currentControllerFor('bear') === 'computer') return;
+      const moved = rules.applyBearMove(nodeId);
       if (moved) emitChange();
       maybeComputerTurn();
       return;
     }
 
     if (state.turn === 'hunters') {
-      if (currentControllerFor('hunters') === 'computer') return;
+      if (match.currentControllerFor('hunters') === 'computer') return;
       const hunterIndex = state.hunters.indexOf(nodeId);
       if (hunterIndex !== -1) {
         state.selectedHunter = hunterIndex;
         state.message = HUNTER_SELECTED_HINT;
+        state.turnHintCode = TURN_HINT_CODES.HUNTER_SELECTED;
+        state.validationErrorCode = VALIDATION_ERROR_CODES.NONE;
         emitChange();
         return;
       }
+
       if (state.selectedHunter !== null) {
-        const moved = applyHunterMove(state.selectedHunter, nodeId);
+        const moved = rules.applyHunterMove(state.selectedHunter, nodeId);
         if (moved) {
           emitChange();
           maybeComputerTurn();
           return;
         }
         state.message = HUNTER_INVALID_MOVE_HINT;
+        state.turnHintCode = TURN_HINT_CODES.HUNTER_SELECTED;
+        state.validationErrorCode = VALIDATION_ERROR_CODES.HUNTER_INVALID_MOVE;
         emitChange();
         return;
       }
+
       state.message = HUNTERS_TURN_HINT;
+      state.turnHintCode = TURN_HINT_CODES.HUNTERS_TURN;
+      state.validationErrorCode = VALIDATION_ERROR_CODES.NONE;
       emitChange();
     }
   }
 
-  function setConfig(mode, computerSide, difficulty = 'easy') {
-    state.mode = mode;
-    state.computerSide = computerSide;
-    state.difficulty = resolveDifficulty(difficulty);
-    emitChange();
-  }
-
   function newMatch(mode, computerSide, difficulty = 'easy') {
-    matchEpoch += 1;
-    pendingComputerTurn = false;
-    resetRecentPositions();
-    resetRecentMoves();
-    resetRecentResponsePatterns();
-    state = emptyState();
-    setAiThinking(false);
-    state.mode = mode;
-    state.computerSide = computerSide;
-    state.difficulty = resolveDifficulty(difficulty);
-    emitChange();
+    scheduler.reset();
+    match.newMatch(mode, computerSide, difficulty);
     maybeComputerTurn();
-  }
-
-  function setStateForBenchmark(nextState) {
-    const safeState = emptyState();
-    safeState.mode = nextState.mode ?? 'hvc';
-    safeState.computerSide = nextState.computerSide ?? 'bear';
-    safeState.difficulty = resolveDifficulty(nextState.difficulty);
-    safeState.round = Number.isInteger(nextState.round) ? nextState.round : 1;
-    safeState.roundResults = [];
-    safeState.lastRoundResult = null;
-    safeState.matchSummary = null;
-    safeState.hunters = Array.isArray(nextState.hunters) ? [...nextState.hunters] : [];
-    safeState.bear = nextState.bear ?? null;
-    safeState.turn = nextState.turn ?? 'bear';
-    safeState.selectedHunter = null;
-    safeState.aiThinking = false;
-    safeState.aiThinkingSide = null;
-    safeState.bearMoves = Number.isInteger(nextState.bearMoves) ? nextState.bearMoves : 0;
-    safeState.phase = nextState.phase ?? 'playing';
-    safeState.message = typeof nextState.message === 'string' ? nextState.message : '';
-
-    state = safeState;
-    resetRecentPositions();
-    resetRecentMoves();
-    resetRecentResponsePatterns();
-    rememberPosition();
   }
 
   function setOnChange(cb) {
     onChange = cb;
   }
 
-  function getState() {
-    return {
-      ...state,
-      hunters: [...state.hunters],
-      roundResults: state.roundResults.map((result) => ({ ...result })),
-      lastRoundResult: state.lastRoundResult ? { ...state.lastRoundResult } : null,
-      matchSummary: state.matchSummary ? { ...state.matchSummary } : null
-    };
-  }
-
   const api = {
-    getState,
+    getState: match.getState,
     clickNode,
     newMatch,
-    setConfig,
+    setConfig: match.setConfig,
     setOnChange,
     hunterLunettes: HUNTER_LUNETTES,
     edges: EDGE_LIST,
@@ -618,7 +499,7 @@ export function createGame(options = {}) {
 
   if (enableBenchmarkTools) {
     api.benchmark = {
-      setState: setStateForBenchmark,
+      setState: match.setStateForBenchmark,
       runComputerTurnSync
     };
   }

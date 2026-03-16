@@ -1,4 +1,4 @@
-import { BOARD_NODES } from './game.js';
+import { BOARD_NODES } from './game-state-helpers.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const REQUIRED_LUNETTE_NODE_IDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];

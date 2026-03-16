@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process';
 const commandSets = {
   base: [
     ['npm', ['test']],
+    ['node', ['./scripts/release-ai-guard.mjs']],
     ['npm', ['run', 'test:coverage']],
     ['npm', ['run', 'build']],
     ['npm', ['run', 'test:e2e:smoke']],
@@ -10,6 +11,7 @@ const commandSets = {
   ],
   full: [
     ['npm', ['test']],
+    ['node', ['./scripts/release-ai-guard.mjs']],
     ['npm', ['run', 'test:coverage']],
     ['npm', ['run', 'build']],
     ['npm', ['run', 'test:e2e:full']],

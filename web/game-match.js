@@ -1,3 +1,5 @@
+import { TURN_HINT_CODES, VALIDATION_ERROR_CODES } from './game-state-codes.js';
+
 export function summarizeMatch(results) {
   const r1 = results[0];
   const r2 = results[1];
@@ -67,7 +69,9 @@ export function createEmptyGameState(setupMessage) {
     aiThinkingSide: null,
     bearMoves: 0,
     phase: 'setup-hunters',
-    message: setupMessage
+    message: setupMessage,
+    turnHintCode: TURN_HINT_CODES.HUNTERS_SETUP,
+    validationErrorCode: VALIDATION_ERROR_CODES.NONE
   };
 }
 
@@ -90,6 +94,8 @@ export function resetStateForNextRound(state, setupMessage) {
   state.bearMoves = 0;
   state.phase = 'setup-hunters';
   state.message = setupMessage;
+  state.turnHintCode = TURN_HINT_CODES.HUNTERS_SETUP;
+  state.validationErrorCode = VALIDATION_ERROR_CODES.NONE;
 }
 
 export function applyFinishedMatchState(state, summary) {
@@ -97,4 +103,6 @@ export function applyFinishedMatchState(state, summary) {
   state.phase = summary.isTie ? 'tie-after-two-rounds' : 'match-over';
   state.message = summary.message;
   state.turn = null;
+  state.turnHintCode = TURN_HINT_CODES.MATCH_OVER;
+  state.validationErrorCode = VALIDATION_ERROR_CODES.NONE;
 }

@@ -110,9 +110,11 @@ export function reachableCountForState(state, start, maxDepth) {
   if (start === null || start === undefined) return 0;
   const queue = [{ node: start, depth: 0 }];
   const visited = new Set([start]);
+  let cursor = 0;
 
-  while (queue.length > 0) {
-    const current = queue.shift();
+  while (cursor < queue.length) {
+    const current = queue[cursor];
+    cursor += 1;
     if (!current || current.depth >= maxDepth) continue;
 
     for (const next of adjacency.get(current.node) ?? []) {
