@@ -896,6 +896,34 @@ h2 {
     );
 }
 
+html.is-native-app :is(.mode-btn, .side-btn, .cta-btn, :where(.actions button), .tutorial-popup-btn) {
+  clip-path: none;
+  border-radius: 12px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 248, 232, 0.2),
+    0 3px 0 rgba(70, 52, 33, 0.22);
+}
+
+html.is-native-app :is(.mode-btn, .side-btn).is-active,
+html.is-native-app .tutorial-popup-btn--primary {
+  border-color: rgba(134, 86, 39, 0.95);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 245, 220, 0.34),
+    0 3px 0 rgba(70, 52, 33, 0.22);
+}
+
+html.is-native-app .edge,
+html.is-native-app .edge-lunette-guide,
+html.is-native-app .piece-group,
+html.is-native-app #board[data-busy="true"] {
+  filter: none;
+}
+
+html.is-native-app .edge,
+html.is-native-app .edge-lunette-guide {
+  shape-rendering: geometricPrecision;
+}
+
 @media (min-width: 760px) {
   :root {
     --app-pad: 1.5rem;

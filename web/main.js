@@ -48,6 +48,7 @@ let selectedMode = 'hvh';
 let selectedComputerSide = 'bear';
 let selectedDifficulty = 'easy';
 loadSavedSettings();
+applyRuntimeRenderingWorkarounds();
 
 function requiredElement(id) {
   const element = document.getElementById(id);
@@ -57,6 +58,20 @@ function requiredElement(id) {
 
 function optionalElement(id) {
   return document.getElementById(id);
+}
+
+function isNativeCapacitorApp() {
+  const capacitor = window.Capacitor;
+  if (!capacitor) return false;
+  if (typeof capacitor.isNativePlatform === 'function') {
+    return capacitor.isNativePlatform();
+  }
+  return capacitor.platform === 'android' || capacitor.platform === 'ios';
+}
+
+function applyRuntimeRenderingWorkarounds() {
+  if (!document?.documentElement) return;
+  document.documentElement.classList.toggle('is-native-app', isNativeCapacitorApp());
 }
 
 function isStorageAvailable() {
