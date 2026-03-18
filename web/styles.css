@@ -186,6 +186,7 @@ body::before {
 }
 
 .legal-footer {
+  display: none;
   padding: 0 1rem 0.9rem;
   text-align: center;
   font-family: var(--font-ui);
