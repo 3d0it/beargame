@@ -316,6 +316,7 @@ h2 {
 }
 
 :is(.mode-btn, .side-btn, .cta-btn, :where(.actions button)) {
+  position: relative;
   font-family: var(--font-body);
   font-weight: 700;
   letter-spacing: 0.01em;
@@ -327,6 +328,16 @@ h2 {
   cursor: pointer;
   transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
   box-shadow: var(--ui-btn-shadow);
+}
+
+:is(.mode-btn, .side-btn) {
+  min-height: 3rem;
+}
+
+.mode-btn,
+.side-btn,
+.cta-btn {
+  isolation: isolate;
 }
 
 :is(.mode-btn, .side-btn, .cta-btn, :where(.actions button)):hover {
@@ -355,15 +366,16 @@ h2 {
 }
 
 .mode-copy {
-  color: var(--ink-soft);
+  color: rgba(72, 59, 46, 0.94);
   font-size: 0.9rem;
 }
 
 .mode-btn.is-active,
 .side-btn.is-active {
-  border-color: rgba(134, 86, 39, 0.95);
+  color: #2b1e14;
+  border-color: rgba(134, 86, 39, 0.98);
   background:
-    linear-gradient(180deg, rgba(244, 226, 187, 0.95), rgba(228, 202, 149, 0.9)),
+    linear-gradient(180deg, rgba(248, 231, 187, 0.99), rgba(230, 193, 121, 0.96)),
     repeating-linear-gradient(
       -10deg,
       rgba(94, 66, 31, 0.04) 0,
@@ -371,6 +383,71 @@ h2 {
       transparent 2px,
       transparent 12px
     );
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 246, 221, 0.5),
+    0 0 0 3px rgba(167, 110, 47, 0.22),
+    0 5px 0 rgba(70, 52, 33, 0.22);
+}
+
+.mode-btn.is-active::after,
+.side-btn.is-active::after {
+  content: "";
+  position: absolute;
+  inset: 0.5rem auto 0.5rem 0.42rem;
+  width: 0.14rem;
+  border-radius: 999px;
+  background: rgba(134, 86, 39, 0.48);
+  pointer-events: none;
+}
+
+.mode-btn.is-active .mode-copy {
+  color: rgba(58, 41, 23, 0.92);
+}
+
+.mode-btn:not(.is-active),
+.side-btn:not(.is-active) {
+  color: rgba(45, 36, 27, 0.88);
+  border-color: rgba(89, 67, 42, 0.42);
+  background:
+    linear-gradient(180deg, rgba(244, 233, 210, 0.95), rgba(226, 209, 177, 0.93)),
+    repeating-linear-gradient(
+      0deg,
+      rgba(78, 59, 38, 0.028) 0,
+      rgba(78, 59, 38, 0.028) 1px,
+      transparent 1px,
+      transparent 10px
+    );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 248, 229, 0.4),
+    0 2px 0 rgba(70, 52, 33, 0.16);
+}
+
+.cta-btn {
+  color: #2a1d13;
+  border-color: rgba(132, 85, 34, 0.95);
+  background:
+    linear-gradient(180deg, rgba(248, 231, 188, 0.995), rgba(231, 194, 114, 0.98)),
+    repeating-linear-gradient(
+      -10deg,
+      rgba(94, 66, 31, 0.04) 0,
+      rgba(94, 66, 31, 0.04) 2px,
+      transparent 2px,
+      transparent 12px
+    );
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 246, 220, 0.56),
+    0 0 0 3px rgba(167, 110, 47, 0.18),
+    0 5px 0 rgba(70, 52, 33, 0.22);
+}
+
+.cta-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 248, 228, 0.18), transparent 45%);
+  pointer-events: none;
+  z-index: -1;
 }
 
 .side-panel {
@@ -873,6 +950,7 @@ h2 {
 }
 
 .tutorial-popup-btn {
+  position: relative;
   font-family: var(--font-body);
   font-weight: 700;
   color: var(--ink);
@@ -900,62 +978,84 @@ h2 {
 html.is-native-app :is(.mode-btn, .side-btn, .cta-btn, :where(.actions button), .tutorial-popup-btn) {
   clip-path: none;
   border-radius: 12px;
-  border: 2px solid rgba(96, 72, 44, 0.68);
+  border: 2px solid rgba(92, 67, 40, 0.9);
+  color: #2f2218;
   background:
-    linear-gradient(180deg, rgba(245, 235, 212, 0.98), rgba(233, 215, 181, 0.96));
+    linear-gradient(180deg, rgba(246, 237, 214, 0.995), rgba(228, 208, 171, 0.99));
   box-shadow:
-    inset 0 1px 0 rgba(255, 248, 230, 0.72),
-    0 1px 3px rgba(83, 61, 36, 0.14);
+    inset 0 1px 0 rgba(255, 248, 230, 0.86),
+    inset 0 -1px 0 rgba(126, 92, 53, 0.12),
+    0 2px 6px rgba(83, 61, 36, 0.18);
 }
 
 html.is-native-app :is(.mode-btn, .side-btn).is-active,
 html.is-native-app .tutorial-popup-btn--primary {
-  border-color: rgba(142, 93, 41, 0.96);
+  border-color: rgba(138, 86, 28, 1);
+  color: #24170f;
   background:
-    linear-gradient(180deg, rgba(244, 226, 187, 0.99), rgba(231, 205, 154, 0.97));
+    linear-gradient(180deg, rgba(251, 233, 183, 1), rgba(232, 192, 110, 0.995));
   box-shadow:
-    inset 0 1px 0 rgba(255, 246, 225, 0.82),
-    0 1px 4px rgba(111, 82, 50, 0.16);
+    inset 0 0 0 2px rgba(255, 245, 217, 0.74),
+    0 0 0 3px rgba(167, 110, 47, 0.28),
+    0 3px 8px rgba(111, 82, 50, 0.24);
 }
 
 html.is-native-app :is(.mode-btn, .side-btn, .cta-btn, :where(.actions button), .tutorial-popup-btn):hover,
 html.is-native-app :is(.mode-btn, .side-btn, .cta-btn, :where(.actions button), .tutorial-popup-btn):active {
   transform: none;
   box-shadow:
-    inset 0 1px 0 rgba(255, 248, 230, 0.72),
-    0 1px 4px rgba(83, 61, 36, 0.16);
+    inset 0 1px 0 rgba(255, 248, 230, 0.82),
+    inset 0 -1px 0 rgba(126, 92, 53, 0.12),
+    0 2px 6px rgba(83, 61, 36, 0.18);
 }
 
 html.is-native-app .mode-btn,
 html.is-native-app #computerSidePanel .side-btn,
 html.is-native-app #difficultyPanel .side-btn {
-  border-color: rgba(104, 78, 47, 0.84);
+  border-color: rgba(97, 71, 42, 0.92);
+  color: #33251a;
   background:
-    linear-gradient(180deg, rgba(241, 229, 201, 0.995), rgba(226, 207, 169, 0.985));
+    linear-gradient(180deg, rgba(244, 233, 206, 0.998), rgba(226, 205, 164, 0.992));
   box-shadow:
-    inset 0 0 0 1px rgba(255, 248, 229, 0.72),
-    0 2px 6px rgba(79, 57, 33, 0.16);
+    inset 0 0 0 1px rgba(255, 248, 229, 0.84),
+    0 2px 7px rgba(79, 57, 33, 0.18);
 }
 
 html.is-native-app .mode-btn.is-active,
 html.is-native-app #computerSidePanel .side-btn.is-active,
 html.is-native-app #difficultyPanel .side-btn.is-active {
-  border-color: rgba(143, 92, 38, 0.98);
+  border-color: rgba(138, 86, 28, 1);
   background:
-    linear-gradient(180deg, rgba(243, 223, 177, 0.995), rgba(227, 198, 141, 0.985));
+    linear-gradient(180deg, rgba(251, 233, 183, 1), rgba(232, 192, 110, 0.995));
   box-shadow:
-    inset 0 0 0 1px rgba(255, 245, 214, 0.76),
-    0 2px 7px rgba(111, 82, 50, 0.18);
+    inset 0 0 0 2px rgba(255, 245, 214, 0.78),
+    0 0 0 3px rgba(167, 110, 47, 0.28),
+    0 3px 8px rgba(111, 82, 50, 0.24);
+}
+
+html.is-native-app .mode-btn::before,
+html.is-native-app #computerSidePanel .side-btn::before,
+html.is-native-app #difficultyPanel .side-btn::before,
+html.is-native-app .cta-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 250, 236, 0.26), transparent 48%);
+  pointer-events: none;
+  z-index: -1;
 }
 
 html.is-native-app .cta-btn {
   border-width: 2px;
-  border-color: rgba(131, 92, 45, 0.94);
+  border-color: rgba(138, 86, 28, 1);
+  color: #24170f;
   background:
-    linear-gradient(180deg, rgba(244, 227, 184, 0.998), rgba(228, 199, 137, 0.99));
+    linear-gradient(180deg, rgba(252, 234, 185, 1), rgba(233, 191, 101, 0.998));
   box-shadow:
-    inset 0 0 0 1px rgba(255, 246, 215, 0.8),
-    0 3px 10px rgba(98, 67, 35, 0.22);
+    inset 0 0 0 2px rgba(255, 246, 215, 0.84),
+    0 0 0 3px rgba(167, 110, 47, 0.3),
+    0 4px 10px rgba(98, 67, 35, 0.26);
 }
 
 html.is-native-app .actions button {
