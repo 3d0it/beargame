@@ -927,8 +927,7 @@ html.is-native-app :is(.mode-btn, .side-btn, .cta-btn, :where(.actions button), 
 }
 
 html.is-native-app .mode-btn,
-html.is-native-app .cta-btn,
-html.is-native-app .actions button,
+html.is-native-app #computerSidePanel .side-btn,
 html.is-native-app #difficultyPanel .side-btn {
   border-color: rgba(104, 78, 47, 0.84);
   background:
@@ -939,6 +938,7 @@ html.is-native-app #difficultyPanel .side-btn {
 }
 
 html.is-native-app .mode-btn.is-active,
+html.is-native-app #computerSidePanel .side-btn.is-active,
 html.is-native-app #difficultyPanel .side-btn.is-active {
   border-color: rgba(143, 92, 38, 0.98);
   background:
@@ -950,12 +950,12 @@ html.is-native-app #difficultyPanel .side-btn.is-active {
 
 html.is-native-app .cta-btn {
   border-width: 2px;
-  border-color: rgba(116, 82, 42, 0.88);
+  border-color: rgba(131, 92, 45, 0.94);
   background:
-    linear-gradient(180deg, rgba(242, 228, 194, 0.995), rgba(226, 204, 160, 0.985));
+    linear-gradient(180deg, rgba(244, 227, 184, 0.998), rgba(228, 199, 137, 0.99));
   box-shadow:
-    inset 0 0 0 1px rgba(255, 248, 227, 0.72),
-    0 2px 7px rgba(88, 62, 35, 0.18);
+    inset 0 0 0 1px rgba(255, 246, 215, 0.8),
+    0 3px 10px rgba(98, 67, 35, 0.22);
 }
 
 html.is-native-app .actions button {
