@@ -186,12 +186,13 @@ body::before {
 }
 
 .legal-footer {
-  display: none;
-  padding: 0 1rem 0.9rem;
+  display: block;
+  padding: 0.1rem 1rem 0.85rem;
   text-align: center;
   font-family: var(--font-ui);
-  font-size: 0.86rem;
-  color: var(--ink-soft);
+  font-size: 0.8rem;
+  color: rgba(86, 72, 59, 0.9);
+  opacity: 0.92;
 }
 
 .legal-footer a {
