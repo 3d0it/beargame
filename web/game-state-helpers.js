@@ -41,9 +41,17 @@ export const HUNTER_LUNETTES = [
   [10, 11, 12]
 ];
 
+export const MAX_BEAR_MOVES = 40;
+export const CENTER_NODE = 18;
+export const INNER_RING_NODES = [16, 17, 19, 20];
+export const CENTRAL_ZONE_NODES = [16, 17, 18, 19, 20];
+export const OUTER_GATEWAYS = [2, 5, 8, 11];
+export const OUTER_RING_NODES = [0, 1, 3, 4, 6, 7, 9, 10, 12, 13, 14, 15];
+export const BOARD_NODE_IDS = BOARD_NODES.map((node) => node.id);
 export const adjacency = buildAdjacency(EDGE_LIST);
 
 const NODE_BY_ID = new Map(BOARD_NODES.map((node) => [node.id, node]));
+const GRAPH_DISTANCE_MATRIX = buildGraphDistanceMatrix();
 
 export function buildAdjacency(edges) {
   const map = new Map();
@@ -60,6 +68,14 @@ export function cloneGameState(state) {
     ...state,
     hunters: [...state.hunters]
   };
+}
+
+export function sortHunters(hunters) {
+  return [...hunters].sort((a, b) => a - b);
+}
+
+export function canonicalHuntersKey(hunters) {
+  return sortHunters(hunters).join(',');
 }
 
 export function isOccupiedNode(state, nodeId) {
@@ -106,6 +122,13 @@ export function nodeDistance(a, b) {
   return Math.hypot(nodeA.x - nodeB.x, nodeA.y - nodeB.y);
 }
 
+export function graphDistance(a, b) {
+  if (!Number.isInteger(a) || !Number.isInteger(b)) return 0;
+  const from = GRAPH_DISTANCE_MATRIX.get(a);
+  if (!from) return 0;
+  return from.get(b) ?? 0;
+}
+
 export function reachableCountForState(state, start, maxDepth) {
   if (start === null || start === undefined) return 0;
   const queue = [{ node: start, depth: 0 }];
@@ -125,4 +148,63 @@ export function reachableCountForState(state, start, maxDepth) {
   }
 
   return visited.size;
+}
+
+export function isCentralZoneNode(nodeId) {
+  return CENTRAL_ZONE_NODES.includes(nodeId);
+}
+
+export function isInnerRingNode(nodeId) {
+  return INNER_RING_NODES.includes(nodeId);
+}
+
+export function isOuterRingNode(nodeId) {
+  return OUTER_RING_NODES.includes(nodeId);
+}
+
+export function isGatewayNode(nodeId) {
+  return OUTER_GATEWAYS.includes(nodeId);
+}
+
+export function validBearStartPositionsForHunters(hunters) {
+  const state = {
+    hunters: sortHunters(hunters),
+    bear: null
+  };
+
+  return BOARD_NODE_IDS
+    .filter((nodeId) => !state.hunters.includes(nodeId))
+    .filter((nodeId) => {
+      const candidate = {
+        ...state,
+        bear: nodeId
+      };
+      return getBearLegalMovesForState(candidate).length > 0;
+    });
+}
+
+function buildGraphDistanceMatrix() {
+  const matrix = new Map();
+
+  for (const start of BOARD_NODE_IDS) {
+    const distances = new Map([[start, 0]]);
+    const queue = [start];
+    let cursor = 0;
+
+    while (cursor < queue.length) {
+      const current = queue[cursor];
+      cursor += 1;
+      const distance = distances.get(current) ?? 0;
+
+      for (const next of adjacency.get(current) ?? []) {
+        if (distances.has(next)) continue;
+        distances.set(next, distance + 1);
+        queue.push(next);
+      }
+    }
+
+    matrix.set(start, distances);
+  }
+
+  return matrix;
 }

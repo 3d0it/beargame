@@ -1,18 +1,16 @@
 import {
   adjacency,
-  applyVirtualMoveToState,
   BOARD_NODES,
+  MAX_BEAR_MOVES,
   cloneGameState,
+  canonicalHuntersKey,
   EDGE_LIST,
   getBearLegalMovesForState,
   getHunterLegalMovesForState,
   HUNTER_LUNETTES,
-  isOccupiedNode,
-  nodeDistance,
-  reachableCountForState
+  isOccupiedNode
 } from './game-state-helpers.js';
-import { createAiEngine } from './game-ai.js';
-import { DIFFICULTY_CONFIG, AI_HEURISTIC_PROFILE } from './game-ai-profile.js';
+import { createAiEngine, DIFFICULTY_POLICY_CONFIG } from './game-ai-policy.js';
 import { createEmptyGameState, summarizeMatch } from './game-match.js';
 import { controllerFor, createMatchOrchestrator } from './game-match-orchestrator.js';
 import { createRulesEngine } from './game-rules-engine.js';
@@ -22,8 +20,9 @@ import { createAiTurnScheduler } from './game-turn-scheduler.js';
 export { BOARD_NODES } from './game-state-helpers.js';
 export { summarizeMatch } from './game-match.js';
 export { controllerFor } from './game-match-orchestrator.js';
+export { MAX_BEAR_MOVES } from './game-state-helpers.js';
 
-const GAME_DIFFICULTIES = new Set(['easy', 'medium', 'hard']);
+const GAME_DIFFICULTIES = new Set(Object.keys(DIFFICULTY_POLICY_CONFIG));
 const HUNTERS_SETUP_HINT = 'I Cacciatori devono scegliere una lunetta iniziale.';
 const BEAR_TURN_HINT = "Turno dell'Orso: seleziona una casella adiacente libera.";
 const HUNTERS_TURN_HINT = 'Turno dei Cacciatori: seleziona un cacciatore, poi una casella adiacente libera.';
@@ -34,8 +33,6 @@ const lunetteByNode = new Map();
 for (const lunette of HUNTER_LUNETTES) {
   for (const nodeId of lunette) lunetteByNode.set(nodeId, lunette);
 }
-
-export const MAX_BEAR_MOVES = 40;
 
 const NODE_IDS = new Set(BOARD_NODES.map((node) => node.id));
 
@@ -56,7 +53,7 @@ export function createGame(options = {}) {
   }
 
   function positionHash(local = stateRef.current) {
-    const hunters = [...local.hunters].sort((a, b) => a - b).join(',');
+    const hunters = canonicalHuntersKey(local.hunters);
     return `${local.phase}|${local.turn}|${local.bear}|${hunters}`;
   }
 
@@ -97,62 +94,41 @@ export function createGame(options = {}) {
     }
   }
 
-  function repetitionPenalty(local) {
+  function getPositionRepeatCount(local) {
     const nextHash = positionHash(local);
-    let penalty = 0;
-
-    for (let i = recentPositionHashes.length - 1; i >= 0; i -= 1) {
-      if (recentPositionHashes[i] !== nextHash) continue;
-      const recency = recentPositionHashes.length - i;
-      penalty += Math.max(0, AI_HEURISTIC_PROFILE.antiLoop.repetitionBase - recency * AI_HEURISTIC_PROFILE.antiLoop.repetitionRecencyStep);
-    }
-
-    return penalty;
+    return recentPositionHashes.filter((hash) => hash === nextHash).length;
   }
 
-  function moveBacktrackPenalty(side, move) {
+  function isImmediateUndo(side, move, local = stateRef.current) {
     if (!move || typeof move.to !== 'number') return 0;
 
-    const state = stateRef.current;
-    const from = side === 'bear' ? state.bear : move.from;
+    const from = side === 'bear' ? local.bear : move.from;
     if (typeof from !== 'number') return 0;
 
-    let penalty = 0;
     for (let i = recentMoves.length - 1; i >= 0; i -= 1) {
       const previous = recentMoves[i];
       if (previous.side !== side) continue;
       if (previous.from !== move.to || previous.to !== from) continue;
-      const recency = recentMoves.length - i;
-      penalty += Math.max(
-        0,
-        AI_HEURISTIC_PROFILE.antiLoop.moveBacktrackBase - recency * AI_HEURISTIC_PROFILE.antiLoop.moveBacktrackRecencyStep
-      );
-      break;
+      return true;
     }
 
-    return penalty;
+    return false;
   }
 
-  function responseLoopPenalty(side, before, after) {
+  function wouldRepeatResponse(side, before, after) {
     if (!before || !after) return 0;
 
     const beforeHash = positionHash(before);
     const afterHash = positionHash(after);
-    let penalty = 0;
 
     for (let i = recentResponsePatterns.length - 1; i >= 0; i -= 1) {
       const previous = recentResponsePatterns[i];
       if (previous.side !== side) continue;
       if (previous.before !== beforeHash || previous.after !== afterHash) continue;
-      const recency = recentResponsePatterns.length - i;
-      penalty += Math.max(
-        0,
-        AI_HEURISTIC_PROFILE.antiLoop.responseLoopBase - recency * AI_HEURISTIC_PROFILE.antiLoop.responseLoopRecencyStep
-      );
-      break;
+      return true;
     }
 
-    return penalty;
+    return false;
   }
 
   function resolveDifficulty(nextDifficulty = 'easy') {
@@ -184,8 +160,8 @@ export function createGame(options = {}) {
     return local.bear !== null && getBearLegalMoves(local).length === 0;
   }
 
-  function getDifficultyConfig() {
-    return DIFFICULTY_CONFIG[stateRef.current.difficulty] ?? DIFFICULTY_CONFIG.easy;
+  function getDifficultyPolicy() {
+    return DIFFICULTY_POLICY_CONFIG[stateRef.current.difficulty] ?? DIFFICULTY_POLICY_CONFIG.easy;
   }
 
   function getValidBearStartPositions(local = stateRef.current) {
@@ -195,10 +171,6 @@ export function createGame(options = {}) {
       simulated.bear = nodeId;
       return getBearLegalMoves(simulated).length > 0;
     });
-  }
-
-  function reachableCount(local, start, maxDepth) {
-    return reachableCountForState(local, start, maxDepth);
   }
 
   function setAiThinking(thinking, side = null) {
@@ -241,72 +213,41 @@ export function createGame(options = {}) {
   });
 
   const ai = createAiEngine({
-    adjacency,
-    maxBearMoves: MAX_BEAR_MOVES,
-    cloneState,
-    nodeDistance,
-    reachableCount,
-    getBearLegalMoves,
-    getHunterLegalMoves,
-    applyVirtualMove: applyVirtualMoveToState,
-    repetitionPenalty,
-    moveBacktrackPenalty,
-    responseLoopPenalty
+    history: {
+      getPositionRepeatCount,
+      hasLoopRisk(local = stateRef.current) {
+        return getPositionRepeatCount(local) > 1;
+      },
+      isImmediateUndo,
+      wouldRepeatResponse
+    }
   });
 
   function computerBearMove() {
     const state = stateRef.current;
-    const bestMove = ai.chooseBearMove(state, state.difficulty, getDifficultyConfig());
+    const bestMove = ai.chooseBearMove(state, state.difficulty, getDifficultyPolicy());
     if (bestMove === null) return;
-    rules.applyBearMove(bestMove);
+    rules.applyBearMove(bestMove.to);
   }
 
   function computerHuntersMove() {
     const state = stateRef.current;
-    const best = ai.chooseHunterMove(state, state.difficulty, getDifficultyConfig());
+    const best = ai.chooseHunterMove(state, state.difficulty, getDifficultyPolicy());
     if (!best) return;
     rules.applyHunterMove(best.hunterIndex, best.to);
   }
 
-  function scoreLunette(lunette) {
-    const state = stateRef.current;
-    return ai.scoreLunette(state, lunette, state.difficulty, getDifficultyConfig(), BOARD_NODES);
-  }
-
-  function isSymmetricOpeningSetup(local = stateRef.current) {
-    return (
-      local.phase === 'setup-hunters' &&
-      local.bear === null &&
-      Array.isArray(local.hunters) &&
-      local.hunters.length === 0 &&
-      local.bearMoves === 0
-    );
-  }
-
   function computerChooseHuntersLunette() {
-    if (isSymmetricOpeningSetup()) {
-      rules.chooseHuntersLunette(HUNTER_LUNETTES[0]);
-      return;
-    }
-
-    let bestLunette = HUNTER_LUNETTES[0];
-    let bestScore = Infinity;
-
-    for (const lunette of HUNTER_LUNETTES) {
-      const score = scoreLunette(lunette);
-      if (score < bestScore) {
-        bestScore = score;
-        bestLunette = lunette;
-      }
-    }
-
-    rules.chooseHuntersLunette(bestLunette);
+    const state = stateRef.current;
+    const chosen = ai.chooseHunterLunette(state, state.difficulty, getDifficultyPolicy());
+    if (!chosen) return;
+    rules.chooseHuntersLunette(chosen);
   }
 
   function chooseBearStartPosition() {
     const state = stateRef.current;
     const free = getValidBearStartPositions();
-    return ai.chooseBearStartPosition(state, state.difficulty, getDifficultyConfig(), free);
+    return ai.chooseBearStartPosition(state, state.difficulty, getDifficultyPolicy(), free);
   }
 
   const scheduler = createAiTurnScheduler({

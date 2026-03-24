@@ -46,17 +46,22 @@ npm run test:ui
 npm run test:coverage
 npm run test:e2e:smoke
 npm run release:check
-npm run eval:ai:quick
-npm run benchmark:ai:medium-hard
+npm run ai:generate
+npm run ai:scenarios
+npm run ai:benchmark
+npm run ai:report
 ```
 
 Per il tuning delle difficolta:
-- metrica primaria: `npm run benchmark:ai:medium-hard`
-- misura esplorativa piu lenta: `npm run eval:ai:quick` oppure `npm run eval:ai`
+- rigenera la tabella esatta: `npm run ai:generate`
+- regressione tattica: `npm run ai:scenarios`
+- benchmark ripetibile su partite e probe di decisione: `npm run ai:benchmark`
+- sweep di calibrazione easy/medium: `npm run ai:report`
 
 Per un preflight di rilascio:
 - `npm run release:check` esegue test, coverage, build, smoke UI e audit runtime
 - `npm run release:check:full` sostituisce lo smoke con i viewport test completi
+- `npm run release:ai:guard` verifica tabella aggiornata, scenari IA, benchmark monotono e calibrazione corrente
 
 ## Pubblicazione web automatica
 Workflow: `.github/workflows/deploy-web.yml`

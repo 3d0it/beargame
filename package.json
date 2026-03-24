@@ -23,10 +23,10 @@
     "release:check": "node ./scripts/release-check.mjs",
     "release:check:full": "node ./scripts/release-check.mjs full",
     "release:ai:guard": "node ./scripts/release-ai-guard.mjs",
-    "eval:ai": "node ./scripts/evaluate-ai.mjs",
-    "eval:ai:quick": "node ./scripts/evaluate-ai.mjs --difficulties=medium,hard --opponents=greedy --matches=2",
-    "eval:ai:top": "node ./scripts/evaluate-ai.mjs --difficulties=medium,hard --opponents=greedy --matches=6",
-    "benchmark:ai:medium-hard": "node ./scripts/benchmark-medium-hard.mjs"
+    "ai:generate": "node ./scripts/ai-generate.mjs",
+    "ai:scenarios": "node ./scripts/ai-scenarios.mjs",
+    "ai:benchmark": "node ./scripts/ai-benchmark.mjs",
+    "ai:report": "node ./scripts/ai-report.mjs"
   },
   "devDependencies": {
     "@capacitor/android": "^8.1.0",
