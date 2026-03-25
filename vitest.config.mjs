@@ -8,6 +8,7 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html'],
       include: ['web/**/*.js'],
+      exclude: ['web/game-ai-table.js'],
       thresholds: {
         lines: 80,
         functions: 80,

@@ -1,51 +1,64 @@
-import { runMediumHardBenchmark } from './benchmark-medium-hard.mjs';
+import { checkAiTableModule } from './ai-generate.mjs';
+import { runAiScenarios } from './ai-scenarios.mjs';
+import {
+  configMatchesCurrent,
+  runAiBenchmark,
+  runAiReport,
+  TARGET_RATINGS
+} from './ai-tools.mjs';
 
-const THRESHOLDS = {
-  minMediumQuality: 7.5,
-  minHardQuality: 6.5,
-  maxQualityGap: 1.5,
-  maxMediumTimeMs: 10,
-  maxHardTimeMs: 350
-};
+const failures = [];
 
-const metrics = normalizeBenchmark(runMediumHardBenchmark().summary);
-validateBenchmark(metrics);
-
-console.log(
-  `AI guard passed: medium=${metrics.mediumQuality}/10, hard=${metrics.hardQuality}/10, medium=${metrics.mediumTimeMs}ms, hard=${metrics.hardTimeMs}ms`
-);
-
-function normalizeBenchmark(summary) {
-  return {
-    mediumQuality: Number(summary.mediumScore),
-    hardQuality: Number(summary.hardScore),
-    mediumTimeMs: Number(summary.mediumTime),
-    hardTimeMs: Number(summary.hardTime)
-  };
+if (!(await checkAiTableModule())) {
+  failures.push('generated AI table is out of date');
 }
 
-function validateBenchmark(metrics) {
-  const failures = [];
+const scenarios = runAiScenarios();
+if (!scenarios.passed) {
+  failures.push('one or more tactical AI scenarios failed');
+}
 
-  if (metrics.mediumQuality < THRESHOLDS.minMediumQuality) {
-    failures.push(`medium quality ${metrics.mediumQuality} < ${THRESHOLDS.minMediumQuality}`);
-  }
-  if (metrics.hardQuality < THRESHOLDS.minHardQuality) {
-    failures.push(`hard quality ${metrics.hardQuality} < ${THRESHOLDS.minHardQuality}`);
-  }
-  if (metrics.mediumQuality - metrics.hardQuality > THRESHOLDS.maxQualityGap) {
-    failures.push(
-      `quality gap too large: medium-hard = ${(metrics.mediumQuality - metrics.hardQuality).toFixed(2)} > ${THRESHOLDS.maxQualityGap}`
-    );
-  }
-  if (metrics.mediumTimeMs > THRESHOLDS.maxMediumTimeMs) {
-    failures.push(`medium time ${metrics.mediumTimeMs}ms > ${THRESHOLDS.maxMediumTimeMs}ms`);
-  }
-  if (metrics.hardTimeMs > THRESHOLDS.maxHardTimeMs) {
-    failures.push(`hard time ${metrics.hardTimeMs}ms > ${THRESHOLDS.maxHardTimeMs}ms`);
-  }
+const benchmark = runAiBenchmark();
+const report = runAiReport();
 
-  if (failures.length > 0) {
-    throw new Error(`AI release guard failed:\n- ${failures.join('\n- ')}`);
+validateRatings(benchmark, failures);
+
+if (!benchmark.orderingOkay) {
+  failures.push('difficulty ordering is broken (hard >= medium >= easy)');
+}
+
+for (const difficulty of ['easy', 'medium', 'hard']) {
+  if (benchmark.levels[difficulty].loopIncidents !== 0) {
+    failures.push(`${difficulty} has avoidable loop incidents: ${benchmark.levels[difficulty].loopIncidents}`);
+  }
+}
+
+if (!configMatchesCurrent(report.bestCandidate)) {
+  failures.push('checked-in difficulty config does not match the current best calibration candidate');
+}
+
+if (failures.length > 0) {
+  throw new Error(`AI release guard failed:\n- ${failures.join('\n- ')}`);
+}
+
+console.log(
+  `AI guard passed: easy=${benchmark.levels.easy.rating}/10, medium=${benchmark.levels.medium.rating}/10, hard=${benchmark.levels.hard.rating}/10`
+);
+
+function validateRatings(benchmarkResult, failuresList) {
+  const tolerances = {
+    easy: 0.5,
+    medium: 0.5,
+    hard: 0.25
+  };
+
+  for (const difficulty of ['easy', 'medium', 'hard']) {
+    const rating = benchmarkResult.levels[difficulty].rating;
+    const target = TARGET_RATINGS[difficulty];
+    if (Math.abs(rating - target) > tolerances[difficulty]) {
+      failuresList.push(
+        `${difficulty} rating ${rating} is outside target ${target} +/- ${tolerances[difficulty]}`
+      );
+    }
   }
 }
