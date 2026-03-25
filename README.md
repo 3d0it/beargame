@@ -68,7 +68,8 @@ Per un preflight di rilascio:
 
 ## Pubblicazione web automatica
 Workflow: `.github/workflows/deploy-web.yml`
-- Trigger: esecuzione conclusa con successo del workflow `CI` su branch `main`
+- Trigger: completamento del workflow `CI` avviato da un `push` su `main`
+- Il deploy parte solo se `CI` termina con successo e pubblica la stessa commit SHA appena validata
 - Deploy automatico su GitHub Pages.
 
 ## Pubblicazione Play Store automatica
