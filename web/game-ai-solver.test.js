@@ -8,7 +8,11 @@ import {
   getExactStateInfo,
   getRankedBearStarts,
   getRankedHunterLunettes,
-  getRankedPlayingMoves
+  getRankedPlayingMoves,
+  describeMoveQuality,
+  deterministicChoiceIndex,
+  isCriticalPlayingState,
+  moveMatchesExactTop
 } from './game-ai-solver.js';
 
 describe('game-ai-solver', () => {
@@ -68,5 +72,60 @@ describe('game-ai-solver', () => {
     expect(lunetteRanking[0]?.lunette).toEqual([1, 2, 3]);
     expect(bearStarts[0]?.move.to).toBe(11);
     expect(bearStarts[0]?.distance).toBeGreaterThan(0);
+  });
+
+  it('copre i fallback e i rami di utilita del solver', () => {
+    expect(getRankedBearStarts([0, 1, 2])).toEqual([]);
+    expect(deterministicChoiceIndex({
+      phase: 'playing',
+      turn: 'bear',
+      bearMoves: 0,
+      bear: 5,
+      hunters: [1, 2, 3]
+    }, 'easy', 1)).toBe(0);
+
+    const state = {
+      phase: 'playing',
+      turn: 'hunters',
+      bearMoves: 6,
+      bear: 16,
+      hunters: [17, 18, 8]
+    };
+    expect(moveMatchesExactTop(state, { hunterIndex: 2, from: 8, to: 19 })).toBe(true);
+    expect(moveMatchesExactTop(state, { hunterIndex: 2, from: 8, to: 7 })).toBe(false);
+
+    const quality = describeMoveQuality(state, { hunterIndex: 2, from: 8, to: 7 });
+    expect(quality.best).not.toBeNull();
+    expect(quality.chosen).not.toBeNull();
+    expect(quality.bestOutcomeLabel).toBeTypeOf('string');
+    expect(quality.chosenOutcomeLabel).toBeTypeOf('string');
+
+    expect(isCriticalPlayingState(state, [], false)).toBe(false);
+    expect(isCriticalPlayingState(state, getRankedPlayingMoves(state), true)).toBe(true);
+  });
+
+  it('rifiuta lookup esatti su stati non playing e descrive mosse mancanti', () => {
+    expect(() =>
+      getExactStateInfo({
+        phase: 'setup-bear',
+        turn: 'bear',
+        bearMoves: 0,
+        bear: 5,
+        hunters: [1, 2, 3]
+      })
+    ).toThrow(/non-playing state/);
+
+    const quality = describeMoveQuality({
+      phase: 'playing',
+      turn: 'bear',
+      bearMoves: 0,
+      bear: 0,
+      hunters: [1, 2, 3]
+    }, { to: 99 });
+
+    expect(quality.best).toBeNull();
+    expect(quality.chosen).toBeNull();
+    expect(quality.bestOutcomeLabel).toBeNull();
+    expect(quality.chosenOutcomeLabel).toBeNull();
   });
 });
