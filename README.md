@@ -47,6 +47,7 @@ npm run test:coverage
 npm run test:e2e:smoke
 npm run release:check
 npm run ai:generate
+npm run ai:validate:reachable
 npm run ai:scenarios
 npm run ai:benchmark
 npm run ai:report
@@ -54,6 +55,7 @@ npm run ai:report
 
 Per il tuning delle difficolta:
 - rigenera la tabella esatta: `npm run ai:generate`
+- ricostruzione esaustiva manuale sui soli stati raggiungibili: `npm run ai:validate:reachable`
 - regressione tattica: `npm run ai:scenarios`
 - benchmark ripetibile su partite e probe di decisione: `npm run ai:benchmark`
 - sweep di calibrazione easy/medium: `npm run ai:report`
@@ -62,6 +64,7 @@ Per un preflight di rilascio:
 - `npm run release:check` esegue test, coverage, build, smoke UI e audit runtime
 - `npm run release:check:full` sostituisce lo smoke con i viewport test completi
 - `npm run release:ai:guard` verifica tabella aggiornata, scenari IA, benchmark monotono e calibrazione corrente
+- `npm run ai:validate:reachable` resta volutamente fuori dai gate automatici: e un controllo manuale piu costoso che ricostruisce `outcome/distance` su tutti gli stati raggiungibili e li confronta con la tablebase runtime
 
 ## Pubblicazione web automatica
 Workflow: `.github/workflows/deploy-web.yml`

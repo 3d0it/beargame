@@ -2,7 +2,6 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
-  AI_OUTCOMES,
   AI_TURNS,
   canonicalBoardSignature,
   describeBearStartCandidates,
@@ -13,17 +12,17 @@ import {
   terminalInfoForState
 } from '../web/game-ai-model.js';
 import {
-  applyVirtualMoveToState,
-  getBearLegalMovesForState,
-  getHunterLegalMovesForState,
   HUNTER_LUNETTES,
   MAX_BEAR_MOVES
 } from '../web/game-state-helpers.js';
+import {
+  evaluateBearTurnFromSuccessors,
+  evaluateHuntersTurnFromSuccessors,
+  listStateSuccessors
+} from '../web/game-ai-tablebase-core.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUTPUT_PATH = resolve(__dirname, '../web/game-ai-table.js');
-const OUTCOME_BASE = AI_OUTCOMES.draw;
-const HUNTERS_WIN = AI_OUTCOMES.huntersWin;
 
 export async function generateAiTableModuleSource() {
   const outcome = new Uint8Array(POSITION_BY_INDEX.length * MAX_BEAR_MOVES * 2);
@@ -121,30 +120,20 @@ function solveBearTurnLayer(outcome, distance, bearMoves) {
       continue;
     }
 
-    const bearMovesList = getBearLegalMovesForState(state);
-    let bestOutcome = HUNTERS_WIN;
-    let bestDistance = 0;
-
-    for (const to of bearMovesList) {
-      const nextState = {
-        hunters: position.hunters,
-        bear: to,
-        bearMoves: bearMoves + 1,
-        turn: AI_TURNS.hunters,
-        phase: 'playing'
-      };
+    const successorInfos = listStateSuccessors(state).map(({ nextState }) => {
       const nextTerminal = terminalInfoForState(nextState);
-      const candidateOutcome = nextTerminal?.outcome ?? outcome[stateIndexForState(nextState)];
-      const candidateDistance = (nextTerminal?.distance ?? distance[stateIndexForState(nextState)]) + 1;
+      if (nextTerminal) return nextTerminal;
 
-      if (isBetterForBear(candidateOutcome, candidateDistance, bestOutcome, bestDistance)) {
-        bestOutcome = candidateOutcome;
-        bestDistance = candidateDistance;
-      }
-    }
+      const nextStateIndex = stateIndexForState(nextState);
+      return {
+        outcome: outcome[nextStateIndex],
+        distance: distance[nextStateIndex]
+      };
+    });
+    const exact = evaluateBearTurnFromSuccessors(successorInfos);
 
-    outcome[stateIndex] = bestOutcome;
-    distance[stateIndex] = bestDistance;
+    outcome[stateIndex] = exact.outcome;
+    distance[stateIndex] = exact.distance;
   }
 }
 
@@ -167,53 +156,21 @@ function solveHunterTurnLayer(outcome, distance, bearMoves) {
       continue;
     }
 
-    const hunterMoves = getHunterLegalMovesForState(state);
-    if (hunterMoves.length === 0) {
-      outcome[stateIndex] = OUTCOME_BASE;
-      distance[stateIndex] = 0;
-      continue;
-    }
-
-    let bestOutcome = OUTCOME_BASE;
-    let bestDistance = 0;
-    let hasChoice = false;
-
-    for (const move of hunterMoves) {
-      const nextState = applyVirtualMoveToState(state, AI_TURNS.hunters, move);
+    const successorInfos = listStateSuccessors(state).map(({ nextState }) => {
       const nextTerminal = terminalInfoForState(nextState);
-      const nextStateIndex = nextTerminal ? -1 : stateIndexForState(nextState);
-      const candidateOutcome = nextTerminal?.outcome ?? outcome[nextStateIndex];
-      const candidateDistance = (nextTerminal?.distance ?? distance[nextStateIndex]) + 1;
+      if (nextTerminal) return nextTerminal;
 
-      if (!hasChoice || isBetterForHunters(candidateOutcome, candidateDistance, bestOutcome, bestDistance)) {
-        bestOutcome = candidateOutcome;
-        bestDistance = candidateDistance;
-        hasChoice = true;
-      }
-    }
+      const nextStateIndex = stateIndexForState(nextState);
+      return {
+        outcome: outcome[nextStateIndex],
+        distance: distance[nextStateIndex]
+      };
+    });
+    const exact = evaluateHuntersTurnFromSuccessors(successorInfos);
 
-    outcome[stateIndex] = bestOutcome;
-    distance[stateIndex] = bestDistance;
+    outcome[stateIndex] = exact.outcome;
+    distance[stateIndex] = exact.distance;
   }
-}
-
-function isBetterForBear(candidateOutcome, candidateDistance, bestOutcome, bestDistance) {
-  if (candidateOutcome !== bestOutcome) {
-    return candidateOutcome === AI_OUTCOMES.draw;
-  }
-  return candidateDistance > bestDistance;
-}
-
-function isBetterForHunters(candidateOutcome, candidateDistance, bestOutcome, bestDistance) {
-  if (candidateOutcome !== bestOutcome) {
-    return candidateOutcome === HUNTERS_WIN;
-  }
-
-  if (candidateOutcome === HUNTERS_WIN) {
-    return candidateDistance < bestDistance;
-  }
-
-  return candidateDistance > bestDistance;
 }
 
 function computeSignature(outcome, distance, bearStartRankings, hunterLunetteRanking) {

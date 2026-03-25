@@ -143,6 +143,7 @@ export function outcomeLabel(outcome) {
 export function terminalInfoForState(state) {
   if (!state || !Number.isInteger(state.bear)) return null;
   const bearMobility = getBearLegalMovesForState(state).length;
+  // Capture takes precedence over the move cap so the solver and runtime agree on frontier states.
   if (bearMobility === 0) {
     return {
       outcome: AI_OUTCOMES.huntersWin,

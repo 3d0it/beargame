@@ -24,6 +24,7 @@
     "release:check:full": "node ./scripts/release-check.mjs full",
     "release:ai:guard": "node ./scripts/release-ai-guard.mjs",
     "ai:generate": "node ./scripts/ai-generate.mjs",
+    "ai:validate:reachable": "node ./scripts/ai-validate-reachable.mjs",
     "ai:scenarios": "node ./scripts/ai-scenarios.mjs",
     "ai:benchmark": "node ./scripts/ai-benchmark.mjs",
     "ai:report": "node ./scripts/ai-report.mjs"
