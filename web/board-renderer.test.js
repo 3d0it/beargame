@@ -78,7 +78,7 @@ describe('createBoardRenderer', () => {
     vi.restoreAllMocks();
   });
 
-  it('valida board e game in input', () => {
+  it('validates board and game inputs', () => {
     const restore = makeFakeDom();
 
     expect(() => createBoardRenderer({ board: null, game: {} })).toThrow('Invalid board element');
@@ -89,7 +89,7 @@ describe('createBoardRenderer', () => {
     restore();
   });
 
-  it('renderizza warning visibile quando mancano nodi lunetta', () => {
+  it('renders a visible warning when arc nodes are missing', () => {
     const restore = makeFakeDom();
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -116,7 +116,7 @@ describe('createBoardRenderer', () => {
     }
   });
 
-  it('gestisce click nodo, invoca game.clickNode e callback', () => {
+  it('handles node clicks, invokes game.clickNode, and triggers the callback', () => {
     const restore = makeFakeDom();
 
     let state = { bear: null, hunters: [], selectedHunter: null };
@@ -157,7 +157,7 @@ describe('createBoardRenderer', () => {
     restore();
   });
 
-  it('in setup cacciatori evidenzia lunette con archi e nodi guida', () => {
+  it('highlights arcs with guide edges and nodes during hunter setup', () => {
     const restore = makeFakeDom();
     const board = new FakeSvgElement('svg');
     const game = {
@@ -179,7 +179,7 @@ describe('createBoardRenderer', () => {
     restore();
   });
 
-  it('mentre l IA pensa marca il board come busy e ignora i click', () => {
+  it('marks the board as busy and ignores clicks while the AI is thinking', () => {
     const restore = makeFakeDom();
     const board = new FakeSvgElement('svg');
     const game = {

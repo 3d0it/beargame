@@ -176,7 +176,7 @@ describe('main.js', () => {
     vi.unstubAllGlobals();
   });
 
-  it('avvia la partita su click di start e mostra la schermata gioco', async () => {
+  it('starts the match on start click and shows the game screen', async () => {
     const state = {
       current: {
         round: 1,
@@ -199,7 +199,7 @@ describe('main.js', () => {
     expect(elements.gameScreen.classList.contains('is-hidden')).toBe(false);
   });
 
-  it('usa configurazione aggiornata per nuova partita (hvc + hunters)', async () => {
+  it('uses the updated configuration for a new match (hvc + hunters)', async () => {
     const state = {
       current: {
         round: 1,
@@ -222,7 +222,7 @@ describe('main.js', () => {
     expect(gameMock.newMatch).toHaveBeenCalledWith('hvc', 'hunters', 'easy');
   });
 
-  it('applica la difficolta selezionata in modalita contro pc', async () => {
+  it('applies the selected difficulty in versus-AI mode', async () => {
     const state = {
       current: {
         round: 1,
@@ -245,7 +245,7 @@ describe('main.js', () => {
     expect(gameMock.newMatch).toHaveBeenCalledWith('hvc', 'bear', 'hard');
   });
 
-  it('carica impostazioni persistite valide da localStorage', async () => {
+  it('loads valid persisted settings from localStorage', async () => {
     const state = {
       current: {
         round: 1,
@@ -267,7 +267,7 @@ describe('main.js', () => {
     expect(elements.difficultyHardBtn.classList.contains('is-active')).toBe(true);
   });
 
-  it('usa fallback safe se localStorage contiene JSON corrotto', async () => {
+  it('uses a safe fallback if localStorage contains corrupted JSON', async () => {
     const state = {
       current: {
         round: 1,
@@ -288,7 +288,7 @@ describe('main.js', () => {
     expect(elements.difficultyEasyBtn.classList.contains('is-active')).toBe(true);
   });
 
-  it('aggiorna status quando il motore invoca onChange', async () => {
+  it('updates status when the engine invokes onChange', async () => {
     const state = {
       current: {
         round: 1,
@@ -324,7 +324,7 @@ describe('main.js', () => {
     expect(elements.matchResultLabel.textContent).toContain('Finale: in attesa');
   });
 
-  it('non registra un service worker in bootstrap', async () => {
+  it('does not register a service worker during bootstrap', async () => {
     const state = {
       current: {
         round: 1,
@@ -344,7 +344,7 @@ describe('main.js', () => {
     expect(registerMock).not.toHaveBeenCalled();
   });
 
-  it('mostra un messaggio esplicito quando l IA sta pensando', async () => {
+  it('shows an explicit message when the AI is thinking', async () => {
     const state = {
       current: {
         mode: 'hvc',
@@ -370,7 +370,7 @@ describe('main.js', () => {
     expect(elements.messageLabel.textContent).toBe('IA sta pensando per i Cacciatori...');
   });
 
-  it('in hvc mostra Umano/IA nel risultato finale', async () => {
+  it('shows Human/AI in the final result for hvc', async () => {
     const state = {
       current: {
         mode: 'hvc',
@@ -412,7 +412,7 @@ describe('main.js', () => {
     expect(elements.messageLabel.textContent).toContain('Partita conclusa');
   });
 
-  it('nel riepilogo finale distingue quando anche il perdente immobilizza l orso', async () => {
+  it('distinguishes when the loser also trapped the bear in the final summary', async () => {
     const state = {
       current: {
         mode: 'hvc',
@@ -454,7 +454,7 @@ describe('main.js', () => {
     expect(elements.matchResultLabel.textContent).not.toContain('>40');
   });
 
-  it('evita copy incoerente con mosse mancanti nel round del perdente', async () => {
+  it('avoids inconsistent copy when moves are missing in the losing round', async () => {
     const state = {
       current: {
         mode: 'hvc',
@@ -496,7 +496,7 @@ describe('main.js', () => {
     expect(elements.matchResultLabel.textContent).not.toContain('null mosse');
   });
 
-  it('gestisce risultati tie e ultimo esito nel banner', async () => {
+  it('handles tie results and the latest outcome in the banner', async () => {
     const state = {
       current: {
         mode: 'hvh',
@@ -546,7 +546,7 @@ describe('main.js', () => {
     expect(elements.messageLabel.textContent).toContain('Partita conclusa');
   });
 
-  it('torna al menu con pulsante Cambia modalità', async () => {
+  it('returns to the menu with the Change mode button', async () => {
     const state = {
       current: {
         round: 1,
@@ -568,7 +568,7 @@ describe('main.js', () => {
     expect(elements.startScreen.classList.contains('is-hidden')).toBe(false);
   });
 
-  it('in assenza di service worker non tenta la registrazione', async () => {
+  it('does not attempt registration when service workers are unavailable', async () => {
     vi.resetModules();
     const elements = setupDom();
     Object.defineProperty(globalThis, 'navigator', {
@@ -603,7 +603,7 @@ describe('main.js', () => {
     expect(gameMock.setOnChange).toHaveBeenCalledTimes(1);
   });
 
-  it('non applica resize inline del board (sizing gestito da CSS)', async () => {
+  it('does not apply inline board resizing (sizing is handled by CSS)', async () => {
     const state = {
       current: {
         round: 1,
@@ -624,7 +624,7 @@ describe('main.js', () => {
     expect(elements.board.style.height).toBeUndefined();
   });
 
-  it('non fallisce quando navigator non esiste', async () => {
+  it('does not fail when navigator does not exist', async () => {
     vi.resetModules();
     setupDom();
     Object.defineProperty(globalThis, 'navigator', {

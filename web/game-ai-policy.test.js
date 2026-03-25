@@ -10,7 +10,7 @@ function createEngine() {
 }
 
 describe('game-ai-policy', () => {
-  it('hard sceglie sempre la prima mossa esatta disponibile', () => {
+  it('hard always chooses the first exact move available', () => {
     const engine = createEngine();
     const state = {
       phase: 'playing',
@@ -27,7 +27,7 @@ describe('game-ai-policy', () => {
     expect(chosen).toEqual({ hunterIndex: 2, from: 8, to: 19 });
   });
 
-  it('medium ed easy restano deterministici e dentro la finestra concessa', () => {
+  it('medium and easy stay deterministic and inside the allowed window', () => {
     const engine = createEngine();
     const state = {
       phase: 'playing',
@@ -48,7 +48,7 @@ describe('game-ai-policy', () => {
     expect(medium?.to).toBe(14);
   });
 
-  it('in stato critico medium ed easy collassano sulla scelta hard', () => {
+  it('in critical states, medium and easy collapse onto the hard choice', () => {
     const engine = createEngine();
     const state = {
       phase: 'playing',
@@ -66,7 +66,7 @@ describe('game-ai-policy', () => {
     expect(medium).toEqual(hard);
   });
 
-  it('evita l undo immediato quando esiste un alternativa valida', () => {
+  it('avoids immediate undo when a valid alternative exists', () => {
     const history = createHistoryTracker();
     const engine = createAiEngine({ history });
     const state = {
@@ -86,7 +86,7 @@ describe('game-ai-policy', () => {
     }
   });
 
-  it('evita di ripetere la stessa risposta quando la sequenza e gia nota', () => {
+  it('avoids repeating the same response when the sequence is already known', () => {
     const history = createHistoryTracker();
     const engine = createAiEngine({ history });
     const state = {

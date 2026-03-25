@@ -16,7 +16,7 @@ import {
 } from './game-ai-solver.js';
 
 describe('game-ai-solver', () => {
-  it('codifica e decodifica uno stato canonico', () => {
+  it('encodes and decodes a canonical state', () => {
     const state = {
       phase: 'playing',
       turn: 'bear',
@@ -33,7 +33,7 @@ describe('game-ai-solver', () => {
     expect(decoded?.hunters).toEqual([0, 1, 3]);
   });
 
-  it('riconosce immediatamente uno stato terminale con orso bloccato', () => {
+  it('immediately recognizes a terminal state with a trapped bear', () => {
     const state = {
       phase: 'playing',
       turn: 'bear',
@@ -52,7 +52,7 @@ describe('game-ai-solver', () => {
     });
   });
 
-  it('ordina le mosse dei cacciatori per chiudere l accesso al centro', () => {
+  it('orders hunter moves to close access to the center', () => {
     const state = {
       phase: 'playing',
       turn: 'hunters',
@@ -65,7 +65,7 @@ describe('game-ai-solver', () => {
     expect(ranked[0]?.moveCode).toBe('h:8-19');
   });
 
-  it('precalcola ranking deterministico per setup cacciatori e partenza orso', () => {
+  it('precomputes deterministic rankings for hunter setup and bear opening positions', () => {
     const lunetteRanking = getRankedHunterLunettes();
     const bearStarts = getRankedBearStarts([1, 2, 3]);
 
@@ -74,7 +74,7 @@ describe('game-ai-solver', () => {
     expect(bearStarts[0]?.distance).toBeGreaterThan(0);
   });
 
-  it('copre i fallback e i rami di utilita del solver', () => {
+  it('covers solver fallbacks and utility branches', () => {
     expect(getRankedBearStarts([0, 1, 2])).toEqual([]);
     expect(deterministicChoiceIndex({
       phase: 'playing',
@@ -104,7 +104,7 @@ describe('game-ai-solver', () => {
     expect(isCriticalPlayingState(state, getRankedPlayingMoves(state), true)).toBe(true);
   });
 
-  it('rifiuta lookup esatti su stati non playing e descrive mosse mancanti', () => {
+  it('rejects exact lookups on non-playing states and describes missing moves', () => {
     expect(() =>
       getExactStateInfo({
         phase: 'setup-bear',

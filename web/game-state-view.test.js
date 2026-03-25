@@ -3,7 +3,7 @@ import { formatStatusMessage } from './game-state-view.js';
 import { GAME_PHASES, TURN_HINT_CODES, VALIDATION_ERROR_CODES } from './game-state-codes.js';
 
 describe('formatStatusMessage', () => {
-  it('usa validationErrorCode invece del testo grezzo del messaggio', () => {
+  it('uses validationErrorCode instead of the raw message text', () => {
     expect(
       formatStatusMessage({
         phase: GAME_PHASES.SETUP_BEAR,
@@ -16,7 +16,7 @@ describe('formatStatusMessage', () => {
     ).toContain('Posizione iniziale non valida');
   });
 
-  it('dà priorità allo stato aiThinking', () => {
+  it('prioritizes the aiThinking state', () => {
     expect(
       formatStatusMessage({
         phase: GAME_PHASES.PLAYING,
@@ -29,7 +29,7 @@ describe('formatStatusMessage', () => {
     ).toBe('IA sta pensando per i Cacciatori...');
   });
 
-  it('non interpreta più il contenuto di state.message quando i codici mancano', () => {
+  it('no longer interprets state.message content when codes are missing', () => {
     expect(
       formatStatusMessage({
         phase: GAME_PHASES.PLAYING,

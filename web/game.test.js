@@ -35,7 +35,7 @@ function playDrawRound(game, { lunetteNode = 8, bearStart = 18 } = {}) {
 }
 
 describe('createGame', () => {
-  it('inizializza una nuova partita con setup corretto', () => {
+  it('initializes a new match with the correct setup', () => {
     const game = createGame();
     game.newMatch('hvh', 'bear', 'easy');
     const state = game.getState();
@@ -47,7 +47,7 @@ describe('createGame', () => {
     expect(state.round).toBe(1);
   });
 
-  it('salva la difficolta selezionata e usa easy come fallback', () => {
+  it('stores the selected difficulty and falls back to easy', () => {
     const game = createGame();
     game.newMatch('hvc', 'bear', 'hard');
     expect(game.getState().difficulty).toBe('hard');
@@ -56,7 +56,7 @@ describe('createGame', () => {
     expect(game.getState().difficulty).toBe('easy');
   });
 
-  it('getState restituisce uno snapshot non mutabile dall esterno', () => {
+  it('getState returns a snapshot that cannot be mutated externally', () => {
     const game = createGame();
     game.newMatch('hvh', 'bear', 'easy');
 
@@ -71,7 +71,7 @@ describe('createGame', () => {
     expect(current.roundResults).toEqual([]);
   });
 
-  it('i cacciatori scelgono una lunetta iniziale valida', () => {
+  it('lets the hunters choose a valid starting arc', () => {
     const game = createGame();
     game.newMatch('hvh', 'bear', 'easy');
 
@@ -82,7 +82,7 @@ describe('createGame', () => {
     expect(state.hunters).toEqual([7, 8, 9]);
   });
 
-  it('non permette all orso di partire su una posizione occupata o senza mosse', () => {
+  it('does not allow the bear to start on an occupied position or one with no moves', () => {
     const game = createGame();
     game.newMatch('hvh', 'bear', 'easy');
     game.clickNode(1);
@@ -95,7 +95,7 @@ describe('createGame', () => {
     expect(game.getState().message).toContain('Posizione iniziale non valida');
   });
 
-  it('applica una mossa valida dell orso e una dei cacciatori', () => {
+  it('applies a valid bear move and a valid hunter move', () => {
     const game = createGame();
     game.newMatch('hvh', 'bear', 'easy');
     game.clickNode(1);
@@ -114,7 +114,7 @@ describe('createGame', () => {
     expect(state.turn).toBe('bear');
   });
 
-  it('mantiene selezione cacciatore e mostra errore su destinazione invalida', () => {
+  it('keeps the hunter selection and shows an error on an invalid destination', () => {
     const game = createGame();
     game.newMatch('hvh', 'bear', 'easy');
     game.clickNode(1);
@@ -130,7 +130,7 @@ describe('createGame', () => {
     expect(state.message).toContain('Mossa non valida');
   });
 
-  it('chiude il primo round in patta dopo 40 mosse orso e passa al round 2', () => {
+  it('ends round one in a draw after 40 bear moves and advances to round 2', () => {
     const game = createGame();
     game.newMatch('hvh', 'bear', 'easy');
 
@@ -143,7 +143,7 @@ describe('createGame', () => {
     expect(state.roundResults[0].reason).toBe('draw');
   });
 
-  it('in hvc con IA cacciatori sceglie la lunetta automaticamente', () => {
+  it('in hvc with hunter AI, chooses the opening arc automatically', () => {
     vi.useFakeTimers();
     const game = createGame();
 
@@ -157,7 +157,7 @@ describe('createGame', () => {
     vi.useRealTimers();
   });
 
-  it('in hvc con IA orso esegue setup e prima mossa dopo la scelta lunetta', () => {
+  it('in hvc with bear AI, performs setup and the first move after arc selection', () => {
     vi.useFakeTimers();
     const game = createGame();
 
@@ -174,7 +174,7 @@ describe('createGame', () => {
     vi.useRealTimers();
   });
 
-  it('espone hook di benchmark solo in modalita esplicita', () => {
+  it('exposes benchmark hooks only in explicit benchmark mode', () => {
     const regularGame = createGame();
     expect(regularGame.benchmark).toBeUndefined();
 
@@ -201,20 +201,20 @@ describe('createGame', () => {
     expect(after.turn).toBe('hunters');
   });
 
-  it('espone le tre difficolta disponibili', () => {
+  it('exposes the three available difficulties', () => {
     const game = createGame();
     expect(game.difficulties).toEqual(['easy', 'medium', 'hard']);
   });
 });
 
 describe('summarizeMatch', () => {
-  it('restituisce partita in corso con meno di due round', () => {
+  it('returns match in progress with fewer than two rounds', () => {
     const summary = summarizeMatch([{ round: 1, reason: 'draw' }]);
     expect(summary.winnerPlayer).toBeNull();
     expect(summary.message).toContain('Partita in corso');
   });
 
-  it('determina il vincitore quando un solo giocatore immobilizza l orso', () => {
+  it('determines the winner when only one player traps the bear', () => {
     const summary = summarizeMatch([
       {
         round: 1,
@@ -236,7 +236,7 @@ describe('summarizeMatch', () => {
     expect(summary.winnerPlayer).toBe('player-2');
   });
 
-  it('risolve lo spareggio in base alle mosse di immobilizzazione', () => {
+  it('resolves the tiebreak based on immobilization moves', () => {
     const summary = summarizeMatch([
       {
         round: 1,

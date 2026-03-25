@@ -29,7 +29,7 @@ const POSITION_SAMPLE_STEP = 251;
 const VALIDATION_SAMPLE_INDEXES = buildUniformNonTerminalSample(VALIDATION_SAMPLE_PER_BUCKET);
 
 describe('game-ai-tablebase validation', () => {
-  it('mantiene un round-trip decode -> encode su tutto lo spazio indicizzato', { timeout: 15_000 }, () => {
+  it('preserves a decode -> encode round-trip across the full indexed space', { timeout: 15_000 }, () => {
     for (let index = 0; index < STATE_COUNT; index += 1) {
       const decoded = decodeStateIndex(index);
       if (!decoded) {
@@ -46,7 +46,7 @@ describe('game-ai-tablebase validation', () => {
     }
   });
 
-  it('mantiene round-trip encode/decode e assenza di collisioni su un campione ampio e uniforme', () => {
+  it('preserves encode/decode round-trips and no collisions on a wide uniform sample', () => {
     const signatures = new Map();
 
     for (const index of VALIDATION_SAMPLE_INDEXES) {
@@ -66,7 +66,7 @@ describe('game-ai-tablebase validation', () => {
     }
   });
 
-  it('fa coincidere tablebase e valutazione pura dei successori su un campione deterministico ampio', () => {
+  it('matches tablebase values and pure successor evaluation on a large deterministic sample', () => {
     for (const index of VALIDATION_SAMPLE_INDEXES) {
       const state = stateFromIndex(index);
       const successors = listStateSuccessors(state);
@@ -82,7 +82,7 @@ describe('game-ai-tablebase validation', () => {
     }
   });
 
-  it('mantiene almeno un successore ottimo coerente con la distance corrente', () => {
+  it('keeps at least one optimal successor consistent with the current distance', () => {
     for (const index of VALIDATION_SAMPLE_INDEXES) {
       const state = stateFromIndex(index);
       const successors = listStateSuccessors(state);
@@ -100,7 +100,7 @@ describe('game-ai-tablebase validation', () => {
     }
   });
 
-  it('esplicita la semantica dei terminali, inclusa la precedenza cattura > limite mosse', () => {
+  it('makes terminal semantics explicit, including capture > move-limit precedence', () => {
     const trappedBeforeLimit = {
       phase: 'playing',
       turn: AI_TURNS.bear,
@@ -142,7 +142,7 @@ describe('game-ai-tablebase validation', () => {
     });
   });
 
-  it('dimostra che il ramo cacciatori senza mosse e solo difensivo nello spazio legale codificato', { timeout: 15_000 }, () => {
+  it('shows that the no-move hunter branch is only defensive in the encoded legal space', { timeout: 15_000 }, () => {
     let suspiciousStates = 0;
 
     for (let index = 0; index < STATE_COUNT; index += 1) {
@@ -157,7 +157,7 @@ describe('game-ai-tablebase validation', () => {
     expect(suspiciousStates).toBe(0);
   });
 
-  it('distingue stati codificabili e stati davvero raggiungibili da una partita reale', { timeout: 15_000 }, () => {
+  it('distinguishes encodable states from states truly reachable in a real match', { timeout: 15_000 }, () => {
     const summary = computeReachabilitySummary();
 
     expect(summary.openingStates).toBeGreaterThan(0);
@@ -168,7 +168,7 @@ describe('game-ai-tablebase validation', () => {
     expect(summary.unencodedTerminalStates).toBeGreaterThan(0);
   });
 
-  it('allinea il runtime con la semantica terminale sui frontieri realmente raggiungibili', () => {
+  it('aligns runtime behavior with terminal semantics on truly reachable frontiers', () => {
     const game = createGame({ enableBenchmarkTools: true });
 
     game.benchmark.setState({

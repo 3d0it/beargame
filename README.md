@@ -1,44 +1,44 @@
 # Gioco dell'Orso
 
-Questo progetto è usato per esplorare la programmazione con agenti, implementando un gioco tradizionale diffuso nei villaggi alpini, in particolare nella Valle Cervo.
+This project explores agent-driven programming through an implementation of a traditional game played in Alpine villages, especially in the Cervo Valley.
 
-Implementazione a codebase unica del gioco dell'orso con:
-- Modalità `umano vs umano`
-- Modalità `umano vs IA` con livelli `facile`, `medio`, `difficile`
-- Distribuzione web (GitHub Pages)
-- Packaging Android + pubblicazione Play Store via GitHub Actions
+Single-codebase implementation of Gioco dell'Orso with:
+- `human vs human` mode
+- `human vs AI` mode with `easy`, `medium`, and `hard` levels
+- web distribution (GitHub Pages)
+- Android packaging + Play Store publishing through GitHub Actions
 
-## Regole implementate
-- L'orso muove per primo.
-- I 3 cacciatori scelgono la lunetta iniziale.
-- L'orso sceglie una posizione iniziale libera.
-- Obiettivo cacciatori: bloccare completamente l'orso.
-- Se l'orso non viene bloccato entro 40 mosse dell'orso, la manche è patta.
-- Match su 2 manche con scambio ruoli (gestione parità con spareggio manuale: nuova partita).
+## Implemented Rules
+- The bear moves first.
+- The 3 hunters choose the initial arc.
+- The bear chooses a free starting position.
+- Hunter objective: completely trap the bear.
+- If the bear is not trapped within 40 bear moves, the round is a draw.
+- Match format: 2 rounds with role swap, with a manual tiebreaker if needed by starting a new game.
 
-## Avvio locale web
-Prerequisiti: Node.js `>= 22`.
+## Local Web Run
+Prerequisite: Node.js `>= 22`.
 
 ```bash
 npm ci
 npm run serve
 ```
-Poi apri `http://localhost:4173`.
+Then open `http://localhost:4173`.
 
-## CI e quality gate
+## CI And Quality Gates
 Workflow: `.github/workflows/ci.yml`
-- Trigger: pull request e push su `main`
-- Esegue test con coverage (`npm run test:coverage`) e soglie minime.
-- Esegue audit dipendenze runtime (`npm audit --omit=dev --audit-level=high`).
+- Trigger: pull requests and pushes to `main`
+- Runs tests with coverage (`npm run test:coverage`) and minimum thresholds
+- Runs a runtime dependency audit (`npm audit --omit=dev --audit-level=high`)
 
-## Strategia test
-- Unit test logica partita: `web/game.test.js`
-- Unit test rendering SVG: `web/board-renderer.test.js`
-- Unit/integration bootstrap UI: `web/main.test.js`
-- UI integration su DOM reale (jsdom): `web/ui.integration.test.js`
-- Test service worker: `web/sw.test.js`
+## Test Strategy
+- Game logic unit tests: `web/game.test.js`
+- SVG rendering unit tests: `web/board-renderer.test.js`
+- UI bootstrap unit/integration tests: `web/main.test.js`
+- Real DOM UI integration tests (jsdom): `web/ui.integration.test.js`
+- Service worker tests: `web/sw.test.js`
 
-Comandi utili:
+Useful commands:
 ```bash
 npm test
 npm run build
@@ -53,31 +53,31 @@ npm run ai:benchmark
 npm run ai:report
 ```
 
-Per il tuning delle difficolta:
-- rigenera la tabella esatta: `npm run ai:generate`
-- ricostruzione esaustiva manuale sui soli stati raggiungibili: `npm run ai:validate:reachable`
-- regressione tattica: `npm run ai:scenarios`
-- benchmark ripetibile su partite e probe di decisione: `npm run ai:benchmark`
-- sweep di calibrazione easy/medium: `npm run ai:report`
+For AI difficulty tuning:
+- regenerate the exact table: `npm run ai:generate`
+- run exhaustive reconstruction on reachable states only: `npm run ai:validate:reachable`
+- run tactical regression scenarios: `npm run ai:scenarios`
+- run repeatable match and probe benchmarks: `npm run ai:benchmark`
+- run the easy/medium calibration sweep: `npm run ai:report`
 
-Per un preflight di rilascio:
-- `npm run release:check` esegue test, coverage, build, smoke UI e audit runtime
-- `npm run release:check:full` sostituisce lo smoke con i viewport test completi
-- `npm run release:ai:guard` verifica tabella aggiornata, scenari IA, benchmark monotono e calibrazione corrente
-- `npm run ai:validate:reachable` resta volutamente fuori dai gate automatici: e un controllo manuale piu costoso che ricostruisce `outcome/distance` su tutti gli stati raggiungibili e li confronta con la tablebase runtime
+For release preflight:
+- `npm run release:check` runs tests, coverage, build, UI smoke checks, and runtime audit
+- `npm run release:check:full` replaces the smoke suite with full viewport coverage
+- `npm run release:ai:guard` verifies updated AI tables, tactical scenarios, monotonic benchmark ordering, and the current calibration
+- `npm run ai:validate:reachable` intentionally stays outside automatic gates: it is a heavier manual check that reconstructs `outcome/distance` across all reachable states and compares it against the runtime tablebase
 
-## Pubblicazione web automatica
+## Automatic Web Publishing
 Workflow: `.github/workflows/deploy-web.yml`
-- Trigger: completamento del workflow `CI` avviato da un `push` su `main`
-- Il deploy parte solo se `CI` termina con successo e pubblica la stessa commit SHA appena validata
-- Deploy automatico su GitHub Pages.
+- Trigger: completion of the `CI` workflow started by a `push` to `main`
+- Deployment runs only if `CI` succeeds and publishes the exact commit SHA that was just validated
+- Automatic deploy to GitHub Pages
 
-## Pubblicazione Play Store automatica
+## Automatic Play Store Publishing
 Workflow: `.github/workflows/publish-playstore.yml`
-- Trigger: manuale (`workflow_dispatch`).
-- Build AAB, firma e upload su track selezionabile (`internal` default, oppure `beta`).
+- Trigger: manual (`workflow_dispatch`)
+- Builds the AAB, signs it, and uploads it to the selected track (`internal` by default, or `beta`)
 
-### Secrets richiesti
+### Required Secrets
 - `SIGNING_KEY_BASE64`
 - `KEY_ALIAS`
 - `KEYSTORE_PASSWORD`
@@ -85,17 +85,17 @@ Workflow: `.github/workflows/publish-playstore.yml`
 - `GCP_WORKLOAD_IDENTITY_PROVIDER`
 - `GCP_SERVICE_ACCOUNT_EMAIL`
 
-## Note architetturali
-- UI e logica di gioco in `web/`.
-- `npm run build` copia la web app statica in `dist/`, usata sia per GitHub Pages sia per Capacitor/Android.
-- Capacitor incapsula la stessa web app per Android, senza duplicare la logica.
+## Architectural Notes
+- UI and game logic live in `web/`
+- `npm run build` copies the static web app into `dist/`, which is used for both GitHub Pages and Capacitor/Android
+- Capacitor wraps the same web app for Android, without duplicating the game logic
 
 ## Artwork
-Illustrazioni originali generate con AI.
+Original illustrations generated with AI.
 
 ## Disclaimer
-Tutti i marchi, nomi e segni distintivi eventualmente citati appartengono ai rispettivi proprietari.
-Questo progetto è indipendente, senza affiliazione o approvazione ufficiale da parte di terzi.
+All trademarks, names, and distinctive signs mentioned, if any, belong to their respective owners.
+This project is independent and has no official affiliation with or endorsement from third parties.
 
-## Licenza
-MIT, vedi `LICENSE`.
+## License
+MIT, see `LICENSE`.

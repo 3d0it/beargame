@@ -23,12 +23,12 @@ function summarizeBenchmark(result) {
 }
 
 describe('AI tooling', () => {
-  it('passa tutta la suite di scenari tattici', { timeout: 15_000 }, () => {
+  it('passes the full tactical scenario suite', { timeout: 15_000 }, () => {
     const result = runAiScenarios(DIFFICULTY_POLICY_CONFIG);
     expect(result.passed).toBe(true);
   });
 
-  it('produce benchmark ripetibile e monotono', { timeout: 15_000 }, () => {
+  it('produces a repeatable, monotonic benchmark', { timeout: 15_000 }, () => {
     const first = summarizeBenchmark(runAiBenchmark(DIFFICULTY_POLICY_CONFIG));
     const second = summarizeBenchmark(runAiBenchmark(DIFFICULTY_POLICY_CONFIG));
 

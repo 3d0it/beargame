@@ -8,7 +8,7 @@ import {
 } from './game-match.js';
 
 describe('game-match', () => {
-  it('riporta partita in corso se mancano risultati sufficienti', () => {
+  it('reports a match in progress if there are not enough results', () => {
     expect(summarizeMatch([])).toEqual({
       isTie: false,
       winnerPlayer: null,
@@ -16,7 +16,7 @@ describe('game-match', () => {
     });
   });
 
-  it('sceglie il vincitore corretto quando vince un solo lato cacciatori', () => {
+  it('chooses the correct winner when only one hunter side wins', () => {
     expect(summarizeMatch([
       { huntersPlayer: 'player-1', reason: 'hunters-win', immobilizationMoves: 10 },
       { huntersPlayer: 'player-2', reason: 'draw', immobilizationMoves: null }
@@ -36,7 +36,7 @@ describe('game-match', () => {
     });
   });
 
-  it('risolve il tie-break sulle mosse di immobilizzazione e gestisce la parita', () => {
+  it('resolves the immobilization-move tiebreak and handles draws', () => {
     expect(summarizeMatch([
       { huntersPlayer: 'player-1', reason: 'hunters-win', immobilizationMoves: 7 },
       { huntersPlayer: 'player-2', reason: 'hunters-win', immobilizationMoves: 9 }
@@ -65,7 +65,7 @@ describe('game-match', () => {
     });
   });
 
-  it('crea e resetta correttamente lo stato di match', () => {
+  it('creates and resets match state correctly', () => {
     const state = createEmptyGameState('Setup iniziale');
 
     expect(state.phase).toBe('setup-hunters');
@@ -91,7 +91,7 @@ describe('game-match', () => {
     expect(state.message).toBe('Nuovo setup');
   });
 
-  it('costruisce round result e stato finale per match-over e tie', () => {
+  it('builds round results and final state for match-over and tie cases', () => {
     const oddRoundState = { round: 1, bearMoves: 6 };
     const evenRoundState = { round: 2, bearMoves: 11 };
 

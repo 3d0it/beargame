@@ -7,7 +7,7 @@
   "engines": {
     "node": ">=22.0.0"
   },
-  "description": "Simulatore web + android del Gioco dell'Orso",
+  "description": "Web + Android version of Gioco dell'Orso",
   "scripts": {
     "build": "node ./scripts/build-web.mjs",
     "serve": "node ./scripts/serve-web.mjs",

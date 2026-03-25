@@ -18,12 +18,12 @@ import {
 } from './game-state-helpers.js';
 
 describe('game-state-helpers', () => {
-  it('ordina e canonizza i cacciatori', () => {
+  it('sorts and canonicalizes the hunters', () => {
     expect(sortHunters([9, 1, 5])).toEqual([1, 5, 9]);
     expect(canonicalHuntersKey([9, 1, 5])).toBe('1,5,9');
   });
 
-  it('riconosce occupazione e mosse legali dell orso anche con stato invalido', () => {
+  it('recognizes occupancy and legal bear moves even with an invalid state', () => {
     const state = {
       hunters: [1, 2, 3],
       bear: 5
@@ -36,7 +36,7 @@ describe('game-state-helpers', () => {
     expect(getBearLegalMovesForState(state)).toEqual([4, 6, 14, 17]);
   });
 
-  it('calcola le mosse legali dei cacciatori saltando posizioni invalide e celle occupate', () => {
+  it('computes legal hunter moves while skipping invalid positions and occupied cells', () => {
     const state = {
       hunters: [1, null, 8],
       bear: 2
@@ -53,7 +53,7 @@ describe('game-state-helpers', () => {
     ].filter((move) => Number.isInteger(move.from)));
   });
 
-  it('applica correttamente le mosse virtuali di orso e cacciatori', () => {
+  it('applies virtual bear and hunter moves correctly', () => {
     const state = {
       phase: 'playing',
       turn: 'bear',
@@ -82,7 +82,7 @@ describe('game-state-helpers', () => {
     });
   });
 
-  it('espone distanze geometriche e di grafo con fallback safe', () => {
+  it('exposes geometric and graph distances with a safe fallback', () => {
     expect(nodeDistance(0, 3)).toBeGreaterThan(0);
     expect(nodeDistance(0, 999)).toBe(0);
     expect(graphDistance(0, 3)).toBe(1);
@@ -90,7 +90,7 @@ describe('game-state-helpers', () => {
     expect(graphDistance(null, 3)).toBe(0);
   });
 
-  it('conta i nodi raggiungibili con profondita e start invalidi', () => {
+  it('counts reachable nodes with invalid depth and start values', () => {
     const state = {
       hunters: [1, 2, 3],
       bear: 5
@@ -101,7 +101,7 @@ describe('game-state-helpers', () => {
     expect(reachableCountForState(state, 5, 1)).toBe(5);
   });
 
-  it('classifica correttamente i nodi speciali e gli start validi dell orso', () => {
+  it('classifies special nodes and valid bear starts correctly', () => {
     expect(isCentralZoneNode(18)).toBe(true);
     expect(isCentralZoneNode(0)).toBe(false);
     expect(isInnerRingNode(16)).toBe(true);
@@ -118,7 +118,7 @@ describe('game-state-helpers', () => {
     expect(starts).toContain(11);
   });
 
-  it('espone la topologia attesa del grafo di gioco', () => {
+  it('exposes the expected game graph topology', () => {
     expect(adjacency.get(0)).toEqual([3, 1, 2]);
     expect(adjacency.get(18)).toEqual([16, 20, 17, 19]);
   });

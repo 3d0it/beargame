@@ -60,7 +60,7 @@ describe('ui integration', () => {
     document.body.innerHTML = '';
   });
 
-  it('bootstrappa l interfaccia e avvia una partita hvh', async () => {
+  it('bootstraps the UI and starts an hvh match', async () => {
     await import('./main.js');
 
     document.getElementById('startMatchBtn').click();
@@ -71,19 +71,19 @@ describe('ui integration', () => {
     expect(document.querySelectorAll('#board circle.node-hit').length).toBe(21);
   });
 
-  it('aggiorna board e status su setup + prima mossa reale', async () => {
+  it('updates board and status after setup and the first real move', async () => {
     await import('./main.js');
     document.getElementById('startMatchBtn').click();
 
-    // Setup cacciatori: clic lunetta destra [7,8,9], nodo 8
+    // Hunter setup: click the right arc [7,8,9], node 8
     getNodeHit('78', '50').dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(document.getElementById('messageLabel').textContent).toContain('Orso: scegli');
 
-    // Setup orso: nodo 18 (centro)
+    // Bear setup: node 18 (center)
     getNodeHit('50', '50').dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(document.getElementById('turnLabel').textContent).toContain('Orso');
 
-    // Prima mossa orso: 18 -> 16
+    // First bear move: 18 -> 16
     getNodeHit('50', '35').dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(document.getElementById('turnLabel').textContent).toContain('Cacciatori');
     expect(document.getElementById('movesLabel').textContent).toContain('Mosse 1/40');

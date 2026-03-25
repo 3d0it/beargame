@@ -6,7 +6,7 @@ describe('sw.js', () => {
     vi.unstubAllGlobals();
   });
 
-  it('registra handler install e activate correttamente', async () => {
+  it('registers install and activate handlers correctly', async () => {
     const handlers = new Map();
     const skipWaiting = vi.fn();
     const claim = vi.fn(() => Promise.resolve());

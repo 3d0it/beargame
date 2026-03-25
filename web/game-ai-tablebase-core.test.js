@@ -7,7 +7,7 @@ import {
 } from './game-ai-tablebase-core.js';
 
 describe('game-ai-tablebase-core', () => {
-  it('l orso preferisce una patta e poi massimizza la distanza', () => {
+  it('the bear prefers a draw and then maximizes distance', () => {
     const evaluation = evaluateBearTurnFromSuccessors([
       { outcome: 1, distance: 4 },
       { outcome: 0, distance: 2 },
@@ -21,7 +21,7 @@ describe('game-ai-tablebase-core', () => {
     });
   });
 
-  it('i cacciatori preferiscono una vittoria e poi minimizzano la distanza di cattura', () => {
+  it('the hunters prefer a win and then minimize capture distance', () => {
     const evaluation = evaluateHuntersTurnFromSuccessors([
       { outcome: 0, distance: 9 },
       { outcome: 1, distance: 4 },
@@ -35,7 +35,7 @@ describe('game-ai-tablebase-core', () => {
     });
   });
 
-  it('mantiene esplicita la fallback a patta quando i cacciatori non hanno successori', () => {
+  it('keeps the draw fallback explicit when the hunters have no successors', () => {
     expect(evaluateHuntersTurnFromSuccessors([])).toEqual({
       outcome: 0,
       distance: 0,
@@ -43,7 +43,7 @@ describe('game-ai-tablebase-core', () => {
     });
   });
 
-  it('espone i successori legali completi del prossimo stato', () => {
+  it('exposes the full legal successors of the next state', () => {
     const bearState = {
       phase: 'playing',
       turn: 'bear',
