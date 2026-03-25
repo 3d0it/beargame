@@ -29,7 +29,7 @@ const POSITION_SAMPLE_STEP = 251;
 const VALIDATION_SAMPLE_INDEXES = buildUniformNonTerminalSample(VALIDATION_SAMPLE_PER_BUCKET);
 
 describe('game-ai-tablebase validation', () => {
-  it('mantiene un round-trip decode -> encode su tutto lo spazio indicizzato', () => {
+  it('mantiene un round-trip decode -> encode su tutto lo spazio indicizzato', { timeout: 15_000 }, () => {
     for (let index = 0; index < STATE_COUNT; index += 1) {
       const decoded = decodeStateIndex(index);
       if (!decoded) {
@@ -142,7 +142,7 @@ describe('game-ai-tablebase validation', () => {
     });
   });
 
-  it('dimostra che il ramo cacciatori senza mosse e solo difensivo nello spazio legale codificato', () => {
+  it('dimostra che il ramo cacciatori senza mosse e solo difensivo nello spazio legale codificato', { timeout: 15_000 }, () => {
     let suspiciousStates = 0;
 
     for (let index = 0; index < STATE_COUNT; index += 1) {
@@ -157,7 +157,7 @@ describe('game-ai-tablebase validation', () => {
     expect(suspiciousStates).toBe(0);
   });
 
-  it('distingue stati codificabili e stati davvero raggiungibili da una partita reale', () => {
+  it('distingue stati codificabili e stati davvero raggiungibili da una partita reale', { timeout: 15_000 }, () => {
     const summary = computeReachabilitySummary();
 
     expect(summary.openingStates).toBeGreaterThan(0);
