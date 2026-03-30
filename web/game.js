@@ -23,7 +23,7 @@ export { controllerFor } from './game-match-orchestrator.js';
 export { MAX_BEAR_MOVES } from './game-state-helpers.js';
 
 const GAME_DIFFICULTIES = new Set(Object.keys(DIFFICULTY_POLICY_CONFIG));
-const HUNTERS_SETUP_HINT = 'I Cacciatori devono scegliere una lunetta iniziale.';
+const HUNTERS_SETUP_HINT = "I Cacciatori devono scegliere una lunetta iniziale sull'arco esterno.";
 const BEAR_TURN_HINT = "Turno dell'Orso: seleziona una casella adiacente libera.";
 const HUNTERS_TURN_HINT = 'Turno dei Cacciatori: seleziona un cacciatore, poi una casella adiacente libera.';
 const HUNTER_SELECTED_HINT = 'Cacciatore selezionato: scegli una casella adiacente libera.';

@@ -182,7 +182,7 @@ describe('main.js', () => {
         round: 1,
         turn: 'hunters',
         bearMoves: 0,
-        message: 'I Cacciatori devono scegliere una lunetta iniziale.'
+        message: "I Cacciatori devono scegliere una lunetta iniziale sull'arco esterno."
       }
     };
 

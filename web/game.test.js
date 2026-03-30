@@ -1,17 +1,17 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createGame, summarizeMatch } from './game.js';
 
-function playDrawRound(game, { lunetteNode = 8, bearStart = 18 } = {}) {
+function playDrawRound(game, { lunetteNode = 15, bearStart = 18 } = {}) {
   let state = game.getState();
   if (state.phase === 'setup-hunters') game.clickNode(lunetteNode);
   state = game.getState();
   if (state.phase === 'setup-bear') game.clickNode(bearStart);
 
   const togglesByLunette = {
-    '1,2,3': [2, 0],
-    '4,5,6': [5, 14],
-    '7,8,9': [8, 15],
-    '10,11,12': [11, 13]
+    '0,1,3': [1, 2],
+    '4,6,14': [14, 5],
+    '7,9,15': [15, 8],
+    '10,12,13': [13, 11]
   };
   const current = game.getState();
   const lunetteKey = [...current.hunters].sort((a, b) => a - b).join(',');
@@ -75,30 +75,28 @@ describe('createGame', () => {
     const game = createGame();
     game.newMatch('hvh', 'bear', 'easy');
 
-    game.clickNode(8);
+    game.clickNode(15);
 
     const state = game.getState();
     expect(state.phase).toBe('setup-bear');
-    expect(state.hunters).toEqual([7, 8, 9]);
+    expect(state.hunters).toEqual([7, 9, 15]);
   });
 
-  it('does not allow the bear to start on an occupied position or one with no moves', () => {
+  it('does not allow the bear to start on an occupied position', () => {
     const game = createGame();
     game.newMatch('hvh', 'bear', 'easy');
-    game.clickNode(1);
-
-    game.clickNode(1);
-    expect(game.getState().bear).toBeNull();
+    game.clickNode(0);
 
     game.clickNode(0);
     expect(game.getState().bear).toBeNull();
-    expect(game.getState().message).toContain('Posizione iniziale non valida');
+    expect(game.getState().bear).toBeNull();
+    expect(game.getState().message).toContain("L'Orso sceglie una posizione iniziale.");
   });
 
   it('applies a valid bear move and a valid hunter move', () => {
     const game = createGame();
     game.newMatch('hvh', 'bear', 'easy');
-    game.clickNode(1);
+    game.clickNode(0);
     game.clickNode(18);
 
     game.clickNode(16);
@@ -108,20 +106,20 @@ describe('createGame', () => {
     expect(state.bearMoves).toBe(1);
 
     game.clickNode(1);
-    game.clickNode(0);
+    game.clickNode(2);
     state = game.getState();
-    expect(state.hunters).toContain(0);
+    expect(state.hunters).toContain(2);
     expect(state.turn).toBe('bear');
   });
 
   it('keeps the hunter selection and shows an error on an invalid destination', () => {
     const game = createGame();
     game.newMatch('hvh', 'bear', 'easy');
-    game.clickNode(1);
+    game.clickNode(0);
     game.clickNode(18);
     game.clickNode(16);
 
-    game.clickNode(1);
+    game.clickNode(0);
     game.clickNode(14);
 
     const state = game.getState();

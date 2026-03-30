@@ -1,7 +1,7 @@
 import { GAME_PHASES, TURN_HINT_CODES, VALIDATION_ERROR_CODES } from './game-state-codes.js';
 
 const STATUS_BY_TURN_HINT = {
-  [TURN_HINT_CODES.HUNTERS_SETUP]: 'Cacciatori: scegli una lunetta.',
+  [TURN_HINT_CODES.HUNTERS_SETUP]: "Cacciatori: scegli una lunetta sull'arco esterno.",
   [TURN_HINT_CODES.BEAR_SETUP]: 'Orso: scegli la posizione iniziale.',
   [TURN_HINT_CODES.BEAR_TURN]: 'Orso: scegli una casella adiacente libera.',
   [TURN_HINT_CODES.HUNTERS_TURN]: 'Cacciatori: seleziona pedina e destinazione adiacente.',

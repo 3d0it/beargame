@@ -1,5 +1,8 @@
 :root {
   --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
   --font-body: "Palatino Linotype", "Book Antiqua", "Iowan Old Style", "Times New Roman", serif;
   --font-display: "Baskerville", "Garamond", "Palatino Linotype", "Times New Roman", serif;
   --font-ui: "Trebuchet MS", "Gill Sans", "Segoe UI", sans-serif;
@@ -180,7 +183,11 @@ body::before {
 .app {
   max-width: 1060px;
   margin: 0 auto;
-  padding: calc(var(--app-pad) + var(--safe-top)) var(--app-pad) var(--app-pad);
+  padding:
+    calc(var(--app-pad) + var(--safe-top))
+    calc(var(--app-pad) + var(--safe-right))
+    calc(var(--app-pad) + var(--safe-bottom))
+    calc(var(--app-pad) + var(--safe-left));
   position: relative;
   z-index: 1;
 }
@@ -730,15 +737,27 @@ h2 {
 }
 
 .edge-lunette-guide {
-  stroke: #6e8a5f;
+  stroke: rgba(68, 55, 44, 0.92);
   stroke-width: 1.25;
-  filter: drop-shadow(0 0 3px rgba(108, 125, 73, 0.45));
+  filter: drop-shadow(0 0 2px rgba(68, 55, 44, 0.2));
 }
 
 #board[data-setup="hunters"] .edge-lunette-guide {
-  stroke: #6b8458;
+  stroke: rgba(68, 55, 44, 0.95);
   stroke-width: 1.45;
-  filter: drop-shadow(0 0 2px rgba(108, 125, 73, 0.35));
+  filter: drop-shadow(0 0 2px rgba(68, 55, 44, 0.16));
+}
+
+.edge-outer-lunette-guide {
+  stroke: #6e8a5f;
+  stroke-width: 1.35;
+  filter: drop-shadow(0 0 3px rgba(108, 125, 73, 0.32));
+}
+
+#board[data-setup="hunters"] .edge-outer-lunette-guide {
+  stroke: #6b8458;
+  stroke-width: 1.5;
+  filter: drop-shadow(0 0 3px rgba(108, 125, 73, 0.38));
 }
 
 .lunette-guide-node {

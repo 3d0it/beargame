@@ -75,8 +75,8 @@ describe('ui integration', () => {
     await import('./main.js');
     document.getElementById('startMatchBtn').click();
 
-    // Hunter setup: click the right arc [7,8,9], node 8
-    getNodeHit('78', '50').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    // Hunter setup: click the right outer arc [7,9,15], node 15
+    getNodeHit('93', '50').dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(document.getElementById('messageLabel').textContent).toContain('Orso: scegli');
 
     // Bear setup: node 18 (center)

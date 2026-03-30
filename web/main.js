@@ -6,7 +6,7 @@ const SETTINGS_STORAGE_KEY = 'beargame.settings.v1';
 const FIRST_MATCH_TUTORIAL_KEY = 'beargame.first-match-tutorial.v1';
 const FIRST_MATCH_TUTORIAL_STEPS = [
   "Scopo: i Cacciatori vincono se bloccano l'Orso; l'Orso fa patta se resta libero per 40 mosse.",
-  'Setup Cacciatori: all inizio scegli una lunetta, cioè una delle 4 terne di posizioni iniziali. Sul tavoliere le lunette valide sono evidenziate.',
+  "Setup Cacciatori: all'inizio scegli una lunetta, cioe una delle 4 terne di posizioni iniziali sull'arco esterno. Sul tavoliere le lunette valide sono evidenziate.",
   "Mossa Orso: tocca una casella adiacente libera. Mossa Cacciatori: tocca un cacciatore, poi una casella adiacente libera.",
   'La partita è in 2 manche: nella seconda i ruoli si invertono automaticamente.'
 ];

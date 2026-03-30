@@ -67,9 +67,9 @@ describe('game-ai-solver', () => {
 
   it('precomputes deterministic rankings for hunter setup and bear opening positions', () => {
     const lunetteRanking = getRankedHunterLunettes();
-    const bearStarts = getRankedBearStarts([1, 2, 3]);
+    const bearStarts = getRankedBearStarts([0, 1, 3]);
 
-    expect(lunetteRanking[0]?.lunette).toEqual([1, 2, 3]);
+    expect(lunetteRanking[0]?.lunette).toEqual([0, 1, 3]);
     expect(bearStarts[0]?.move.to).toBe(11);
     expect(bearStarts[0]?.distance).toBeGreaterThan(0);
   });

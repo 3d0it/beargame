@@ -1,13 +1,22 @@
 import { BOARD_NODES } from './game-state-helpers.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
-const REQUIRED_LUNETTE_NODE_IDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-const LUNETTE_GROUPS = [
-  [1, 2, 3],
-  [4, 5, 6],
-  [7, 8, 9],
-  [10, 11, 12]
+const LUNETTE_SETUP_GROUPS = [
+  [1, 0, 3],
+  [10, 13, 12],
+  [4, 14, 6],
+  [7, 15, 9]
 ];
+const LUNETTE_ARC_GROUPS = [
+  [1, 2, 3],
+  [10, 11, 12],
+  [4, 5, 6],
+  [7, 8, 9]
+];
+const REQUIRED_LUNETTE_NODE_IDS = [...new Set([
+  ...LUNETTE_SETUP_GROUPS.flat(),
+  ...LUNETTE_ARC_GROUPS.flat()
+])].sort((a, b) => a - b);
 
 export function createBoardRenderer({ board, game, onAfterNodeClick }) {
   validateBoardRendererInput(board, game);
@@ -71,7 +80,7 @@ export function createBoardRenderer({ board, game, onAfterNodeClick }) {
 }
 
 function resolveLunetteNodes(nodeMap) {
-  const resolved = [];
+  const resolved = new Map();
   const missingIds = [];
 
   for (const id of REQUIRED_LUNETTE_NODE_IDS) {
@@ -80,7 +89,7 @@ function resolveLunetteNodes(nodeMap) {
       missingIds.push(id);
       continue;
     }
-    resolved.push(node);
+    resolved.set(id, node);
   }
 
   if (missingIds.length > 0) {
@@ -89,20 +98,7 @@ function resolveLunetteNodes(nodeMap) {
   }
 
   return {
-    nodes: {
-      n1: resolved[0],
-      n2: resolved[1],
-      n3: resolved[2],
-      n4: resolved[3],
-      n5: resolved[4],
-      n6: resolved[5],
-      n7: resolved[6],
-      n8: resolved[7],
-      n9: resolved[8],
-      n10: resolved[9],
-      n11: resolved[10],
-      n12: resolved[11]
-    },
+    nodes: resolved,
     missingIds: []
   };
 }
@@ -118,15 +114,30 @@ function drawBoardLines(board, lunetteResolution, isHuntersSetup = false) {
     return;
   }
 
-  const lunetteNodes = lunetteResolution.nodes;
-  board.appendChild(curvePathThrough(lunetteNodes.n1, lunetteNodes.n2, lunetteNodes.n3, isHuntersSetup));
-  board.appendChild(curvePathThrough(lunetteNodes.n10, lunetteNodes.n11, lunetteNodes.n12, isHuntersSetup));
-  board.appendChild(curvePathThrough(lunetteNodes.n4, lunetteNodes.n5, lunetteNodes.n6, isHuntersSetup));
-  board.appendChild(curvePathThrough(lunetteNodes.n7, lunetteNodes.n8, lunetteNodes.n9, isHuntersSetup));
+  for (const [startId, midpointId, endId] of LUNETTE_ARC_GROUPS) {
+    const start = lunetteResolution.nodes.get(startId);
+    const midpoint = lunetteResolution.nodes.get(midpointId);
+    const end = lunetteResolution.nodes.get(endId);
+    board.appendChild(curvePathThrough(
+      start,
+      midpoint,
+      end,
+      isHuntersSetup ? 'edge edge-lunette-guide' : 'edge'
+    ));
+  }
+
+  if (!isHuntersSetup) return;
+
+  for (const [startId, midpointId, endId] of LUNETTE_SETUP_GROUPS) {
+    const start = lunetteResolution.nodes.get(startId);
+    const midpoint = lunetteResolution.nodes.get(midpointId);
+    const end = lunetteResolution.nodes.get(endId);
+    board.appendChild(curvePathThrough(start, midpoint, end, 'edge edge-outer-lunette-guide'));
+  }
 }
 
 function drawLunetteGuides(board, nodeMap) {
-  for (const lunette of LUNETTE_GROUPS) {
+  for (const lunette of LUNETTE_SETUP_GROUPS) {
     for (const nodeId of lunette) {
       const node = nodeMap.get(nodeId);
       if (!node) continue;
@@ -185,12 +196,12 @@ function ellipse(cx, cy, rx, ry, cls = 'edge') {
   return e;
 }
 
-function curvePathThrough(start, midpoint, end, highlight = false) {
+function curvePathThrough(start, midpoint, end, cls = 'edge') {
   const controlX = 2 * midpoint.x - (start.x + end.x) / 2;
   const controlY = 2 * midpoint.y - (start.y + end.y) / 2;
   const path = document.createElementNS(SVG_NS, 'path');
   path.setAttribute('d', `M ${start.x} ${start.y} Q ${controlX} ${controlY} ${end.x} ${end.y}`);
-  path.setAttribute('class', highlight ? 'edge edge-lunette-guide' : 'edge');
+  path.setAttribute('class', cls);
   return path;
 }
 

@@ -168,13 +168,18 @@ describe('createBoardRenderer', () => {
     const renderer = createBoardRenderer({ board, game });
     renderer.render();
 
-    const highlightedArcs = collect(
+    const highlightedInnerArcs = collect(
       board,
       (el) => el.tagName === 'path' && (el.getAttribute('class') || '').includes('edge-lunette-guide')
     );
+    const highlightedOuterArcs = collect(
+      board,
+      (el) => el.tagName === 'path' && (el.getAttribute('class') || '').includes('edge-outer-lunette-guide')
+    );
     const guideNodes = collect(board, (el) => el.getAttribute('class') === 'lunette-guide-node');
 
-    expect(highlightedArcs).toHaveLength(4);
+    expect(highlightedInnerArcs).toHaveLength(4);
+    expect(highlightedOuterArcs).toHaveLength(4);
     expect(guideNodes).toHaveLength(12);
     restore();
   });
